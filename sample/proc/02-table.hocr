@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+ <head>
+  <title></title>
+  <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
+  <meta name='ocr-system' content='tesseract 5.2.0-13-g74e22' />
+  <meta name='ocr-capabilities' content='ocr_page ocr_carea ocr_par ocr_line ocrx_word ocrp_wconf'/>
+ </head>
+ <body>
+  <div class='ocr_page' id='page_1' title='image "orig/02-table.png"; bbox 0 0 874 482; ppageno 0; scan_res 96 96'>
+   <div class='ocr_separator' id='block_1_1' title="bbox 0 0 874 1"></div>
+   <div class='ocr_separator' id='block_1_2' title="bbox 0 0 3 482"></div>
+   <div class='ocr_carea' id='block_1_3' title="bbox 7 8 850 479">
+    <p class='ocr_par' id='par_1_1' lang='eng' title="bbox 7 8 850 479">
+     <span class='ocr_line' id='line_1_1' title="bbox 8 8 850 33; baseline 0 -4; x_size 23.411526; x_descenders 3.4115264; x_ascenders 6.666666">
+      <span class='ocrx_word' id='word_1_1' title='bbox 8 9 107 29; x_wconf 92'>CUENTO</span>
+      <span class='ocrx_word' id='word_1_2' title='bbox 408 8 482 29; x_wconf 90'>3*+BB</span>
+      <span class='ocrx_word' id='word_1_3' title='bbox 555 9 644 29; x_wconf 92'>TAKSIM</span>
+      <span class='ocrx_word' id='word_1_4' title='bbox 719 9 850 33; x_wconf 96'>13,290,000</span>
+     </span>
+     <span class='ocr_line' id='line_1_2' title="bbox 7 82 850 108; baseline 0 -4; x_size 23.411526; x_descenders 3.4115264; x_ascenders 6.666666">
+      <span class='ocrx_word' id='word_1_5' title='bbox 7 84 59 104; x_wconf 93'>ATIK</span>
+      <span class='ocrx_word' id='word_1_6' title='bbox 69 84 156 104; x_wconf 96'>PALACE</span>
+      <span class='ocrx_word' id='word_1_7' title='bbox 414 82 474 104; x_wconf 92'>4*BB</span>
+      <span class='ocrx_word' id='word_1_8' title='bbox 555 84 644 104; x_wconf 92'>TAKSIM</span>
+      <span class='ocrx_word' id='word_1_9' title='bbox 719 83 850 108; x_wconf 96'>13,650,000</span>
+     </span>
+     <span class='ocr_line' id='line_1_3' title="bbox 8 156 850 182; baseline 0 -4; x_size 23.411526; x_descenders 3.4115264; x_ascenders 6.666666">
+      <span class='ocrx_word' id='word_1_10' title='bbox 8 158 125 178; x_wconf 96'>CARTOON</span>
+      <span class='ocrx_word' id='word_1_11' title='bbox 411 156 439 178; x_wconf 92'>4*</span>
+      <span class='ocrx_word' id='word_1_12' title='bbox 450 158 478 178; x_wconf 96'>BB</span>
+      <span class='ocrx_word' id='word_1_13' title='bbox 555 158 644 178; x_wconf 92'>TAKSIM</span>
+      <span class='ocrx_word' id='word_1_14' title='bbox 719 157 850 182; x_wconf 96'>15,350,000</span>
+     </span>
+     <span class='ocr_line' id='line_1_4' title="bbox 9 228 850 260; baseline 0 -8; x_size 23.411526; x_descenders 3.4115264; x_ascenders 6.666666">
+      <span class='ocrx_word' id='word_1_15' title='bbox 9 232 130 252; x_wconf 92'>DEDEMAN</span>
+      <span class='ocrx_word' id='word_1_16' title='bbox 412 231 439 252; x_wconf 93'>5*</span>
+      <span class='ocrx_word' id='word_1_17' title='bbox 449 232 478 252; x_wconf 95'>BB</span>
+      <span class='ocrx_word' id='word_1_18' title='bbox 534 228 669 260; x_wconf 91'>GAYRETEPE</span>
+      <span class='ocrx_word' id='word_1_19' title='bbox 719 232 850 256; x_wconf 96'>15,550,000</span>
+     </span>
+     <span class='ocr_line' id='line_1_5' title="bbox 7 302 850 335; baseline 0.001 -9; x_size 24.582102; x_descenders 3.5821025; x_ascenders 6.9999995">
+      <span class='ocrx_word' id='word_1_20' title='bbox 7 306 52 326; x_wconf 92'>THE</span>
+      <span class='ocrx_word' id='word_1_21' title='bbox 61 306 159 327; x_wconf 91'>CRATON</span>
+      <span class='ocrx_word' id='word_1_22' title='bbox 412 305 439 327; x_wconf 92'>5*</span>
+      <span class='ocrx_word' id='word_1_23' title='bbox 450 307 478 326; x_wconf 96'>BB</span>
+      <span class='ocrx_word' id='word_1_24' title='bbox 575 302 626 335; x_wconf 93'>SISLI</span>
+      <span class='ocrx_word' id='word_1_25' title='bbox 719 306 850 330; x_wconf 96'>16,150,000</span>
+     </span>
+     <span class='ocr_line' id='line_1_6' title="bbox 9 379 850 405; baseline 0 -4; x_size 23.411526; x_descenders 3.4115264; x_ascenders 6.666666">
+      <span class='ocrx_word' id='word_1_26' title='bbox 9 381 69 401; x_wconf 96'>ELITE</span>
+      <span class='ocrx_word' id='word_1_27' title='bbox 76 381 166 401; x_wconf 96'>WORLD</span>
+      <span class='ocrx_word' id='word_1_28' title='bbox 412 379 438 401; x_wconf 92'>5*</span>
+      <span class='ocrx_word' id='word_1_29' title='bbox 450 381 478 401; x_wconf 95'>BB</span>
+      <span class='ocrx_word' id='word_1_30' title='bbox 555 381 644 401; x_wconf 92'>TAKSIM</span>
+      <span class='ocrx_word' id='word_1_31' title='bbox 719 381 850 405; x_wconf 95'>17,950,000</span>
+     </span>
+     <span class='ocr_line' id='line_1_7' title="bbox 9 417 850 442; baseline 0 -4; x_size 23.411526; x_descenders 3.4115264; x_ascenders 6.666666">
+      <span class='ocrx_word' id='word_1_32' title='bbox 9 418 95 438; x_wconf 95'>HILTON</span>
+      <span class='ocrx_word' id='word_1_33' title='bbox 106 418 252 438; x_wconf 96'>BOSPHORUS</span>
+      <span class='ocrx_word' id='word_1_34' title='bbox 412 417 439 438; x_wconf 93'>5*</span>
+      <span class='ocrx_word' id='word_1_35' title='bbox 449 418 478 438; x_wconf 95'>BB</span>
+      <span class='ocrx_word' id='word_1_36' title='bbox 555 418 644 438; x_wconf 91'>TAKSIM</span>
+      <span class='ocrx_word' id='word_1_37' title='bbox 718 418 850 442; x_wconf 96'>20,890,000</span>
+     </span>
+     <span class='ocr_line' id='line_1_8' title="bbox 9 454 850 479; baseline 0 -4; x_size 23.411526; x_descenders 3.4115264; x_ascenders 6.666666">
+      <span class='ocrx_word' id='word_1_38' title='bbox 9 455 84 475; x_wconf 91'>HYATT</span>
+      <span class='ocrx_word' id='word_1_39' title='bbox 93 455 202 475; x_wconf 96'>REGENCY</span>
+      <span class='ocrx_word' id='word_1_40' title='bbox 412 454 439 475; x_wconf 87'>5*</span>
+      <span class='ocrx_word' id='word_1_41' title='bbox 450 456 478 475; x_wconf 95'>BB</span>
+      <span class='ocrx_word' id='word_1_42' title='bbox 553 455 648 475; x_wconf 92'>ATAKOY</span>
+      <span class='ocrx_word' id='word_1_43' title='bbox 718 455 850 479; x_wconf 96'>23,790,000</span>
+     </span>
+    </p>
+   </div>
+   <div class='ocr_separator' id='block_1_4' title="bbox 872 0 874 482"></div>
+  </div>
+ </body>
+</html>
