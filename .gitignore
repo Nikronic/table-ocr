@@ -59,4 +59,4 @@ docs/_build/
 target/
 
 # notebooks checkpoint
-notebooks/.ipynb_checkpoints
+.ipynb_checkpoints
