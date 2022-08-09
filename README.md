@@ -11,11 +11,13 @@ it has to run the system wide tesseract than conda one.
 
 ### ttocr-ml
 > Use virtual env `ttocrml39`
+
 The branch that is main focused on machine learning and classic vision methods for parsing images of text data. For instance, using OpenCV line detection
 algorithms for detecting tables, rows, columns and so on.
 
 ### ttocr-dl
 > Use virtual env `ttocrdl39`
+
 The branch that is main focused on deep learning methods for parsing the images of text data. For instance, using
 [MS Layout Parser](https://github.com/Layout-Parser/layout-parser) for extracting table or table structure.
 
