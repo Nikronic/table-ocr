@@ -1,5 +1,6 @@
 name: ttocrdl39
 channels:
+  - pytorch
   - conda-forge
   - defaults
 dependencies:
@@ -19,6 +20,7 @@ dependencies:
   - backports=1.0=py_2
   - backports.functools_lru_cache=1.6.4=pyhd8ed1ab_0
   - beautifulsoup4=4.11.1=pyha770c72_0
+  - blas=1.0=mkl
   - bleach=5.0.1=pyhd8ed1ab_0
   - blosc=1.21.1=h83bc5f7_3
   - brotli=1.0.9=h166bdaf_7
@@ -42,6 +44,7 @@ dependencies:
   - conda=4.13.0=py39hf3d152e_1
   - conda-package-handling=1.8.1=py39hb9d737c_1
   - cryptography=37.0.2=py39hd97740a_0
+  - cudatoolkit=11.3.1=h9edb442_10
   - cycler=0.11.0=pyhd8ed1ab_0
   - cytoolz=0.12.0=py39hb9d737c_0
   - dask-core=2022.7.1=pyhd8ed1ab_0
@@ -91,6 +94,7 @@ dependencies:
   - importlib-metadata=4.11.4=py39hf3d152e_0
   - importlib_metadata=4.11.4=hd8ed1ab_0
   - importlib_resources=5.8.0=pyhd8ed1ab_0
+  - intel-openmp=2022.0.1=h06a4308_3633
   - ipykernel=6.15.1=pyh210e3f2_0
   - ipympl=0.9.1=pyhd8ed1ab_0
   - ipython=8.4.0=py39hf3d152e_0
@@ -122,12 +126,12 @@ dependencies:
   - libaec=1.0.6=h9c3ff4c_0
   - libarchive=3.5.2=hb890918_3
   - libavif=0.10.1=h166bdaf_1
-  - libblas=3.9.0=15_linux64_openblas
+  - libblas=3.9.0=14_linux64_mkl
   - libbrotlicommon=1.0.9=h166bdaf_7
   - libbrotlidec=1.0.9=h166bdaf_7
   - libbrotlienc=1.0.9=h166bdaf_7
   - libcap=2.64=ha37c62d_0
-  - libcblas=3.9.0=15_linux64_openblas
+  - libcblas=3.9.0=14_linux64_mkl
   - libclang=14.0.6=default_h2e3cab8_0
   - libclang13=14.0.6=default_h3a83d3e_0
   - libcups=2.3.3=hf5a7f15_1
@@ -150,8 +154,8 @@ dependencies:
   - libiconv=1.16=h516909a_0
   - libidn2=2.3.2=h7f98852_0
   - libimagequant=2.17.0=h7f98852_1
-  - liblapack=3.9.0=15_linux64_openblas
-  - liblapacke=3.9.0=15_linux64_openblas
+  - liblapack=3.9.0=14_linux64_mkl
+  - liblapacke=3.9.0=14_linux64_mkl
   - libllvm14=14.0.6=he0ac6c6_0
   - libmamba=0.25.0=hd8a31e3_1
   - libmambapy=0.25.0=py39hd55135b_1
@@ -198,6 +202,7 @@ dependencies:
   - matplotlib-base=3.5.2=py39h700656a_1
   - matplotlib-inline=0.1.3=pyhd8ed1ab_0
   - mistune=0.8.4=py39h3811e60_1005
+  - mkl=2022.0.1=h06a4308_117
   - munkres=1.1.4=pyh9f0ad1d_0
   - mysql-common=8.0.30=haf5c9bc_0
   - mysql-libs=8.0.30=h28c427c_0
@@ -268,6 +273,8 @@ dependencies:
   - python-dateutil=2.8.2=pyhd8ed1ab_0
   - python-fastjsonschema=2.16.1=pyhd8ed1ab_0
   - python_abi=3.9=2_cp39
+  - pytorch=1.10.0=py3.9_cuda11.3_cudnn8.2.0_0
+  - pytorch-mutex=1.0=cuda
   - pytz=2022.1=pyhd8ed1ab_0
   - pywavelets=1.3.0=py39hd257fcd_1
   - pyyaml=6.0=py39hb9d737c_4
@@ -299,9 +306,11 @@ dependencies:
   - tk=8.6.12=h27826a3_0
   - toml=0.10.2=pyhd8ed1ab_0
   - toolz=0.12.0=pyhd8ed1ab_0
+  - torchvision=0.11.0=py39_cu113
   - tornado=6.2=py39hb9d737c_0
   - tqdm=4.64.0=pyhd8ed1ab_0
   - traitlets=5.3.0=pyhd8ed1ab_0
+  - typing_extensions=4.3.0=pyha770c72_0
   - tzdata=2022a=h191b570_0
   - unicodedata2=14.0.0=py39hb9d737c_1
   - unpaper=6.1=hb301257_1
@@ -343,4 +352,45 @@ dependencies:
   - zlib=1.2.12=h166bdaf_1
   - zlib-ng=2.0.6=h166bdaf_0
   - zstd=1.5.2=h8a70e8d_1
+  - pip:
+    - absl-py==1.2.0
+    - antlr4-python3-runtime==4.9.3
+    - appdirs==1.4.4
+    - black==21.4b2
+    - cachetools==5.2.0
+    - click==8.1.3
+    - detectron2==0.6+cu113
+    - future==0.18.2
+    - fvcore==0.1.5.post20220512
+    - google-auth==2.10.0
+    - google-auth-oauthlib==0.4.6
+    - grpcio==1.47.0
+    - hydra-core==1.2.0
+    - iopath==0.1.9
+    - layoutparser==0.3.4
+    - markdown==3.4.1
+    - mypy-extensions==0.4.3
+    - oauthlib==3.2.0
+    - omegaconf==2.2.2
+    - pandas==1.4.3
+    - pathspec==0.9.0
+    - pdf2image==1.16.0
+    - pdfplumber==0.7.4
+    - portalocker==2.5.1
+    - protobuf==3.19.4
+    - pyasn1==0.4.8
+    - pyasn1-modules==0.2.8
+    - pycocotools==2.0.4
+    - pydot==1.4.2
+    - regex==2022.7.25
+    - requests-oauthlib==1.3.1
+    - rsa==4.9
+    - tabulate==0.8.10
+    - tensorboard==2.9.1
+    - tensorboard-data-server==0.6.1
+    - tensorboard-plugin-wit==1.8.1
+    - termcolor==1.1.0
+    - wand==0.6.9
+    - werkzeug==2.2.2
+    - yacs==0.1.8
 prefix: /home/nik/anaconda3/envs/ttocrdl39
