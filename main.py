@@ -14,6 +14,8 @@ import shutil
 import sys
 import os
 
+from ttocr.detection import detectors
+
 
 if __name__ == '__main__':
     # globals
@@ -71,15 +73,18 @@ if __name__ == '__main__':
         filename = 'sample/orig/01-table.png'
         img_reader = io.CV2ImageReader()
         img = img_reader(filename)
-        ## copy image for visualization (draw on image)
-        cImage = np.copy(img)
+        # copy image for visualization (draw on image)
+        copy_image = np.copy(img)
 
+        # convert color to gray
+        color_converter = preprocessors.CV2ImageColorConverter()
+        gray_img = color_converter(image=img,
+                                   mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY)
+        # detect canny edges
+        canny_detector = detectors.CannyEdgeDetector()
+        canny_edges = canny_detector(image=gray_img, threshold1=50, threshold2=200)
+        
 
-        # Log artifacts (logs, saved files, etc)
-        mlflow.log_artifacts(MLFLOW_ARTIFACTS_PATH)
-        # delete redundant logs, files that are logged as artifact
-        shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
-    
     except Exception as e:
         logger.exception(e)
         raise e
