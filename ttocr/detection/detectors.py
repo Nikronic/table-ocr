@@ -1,16 +1,18 @@
 __all__ = [
     # abstract classes
-    'Detector', 'EdgeDetector', 'LineDetector'
+    'Detector', 'EdgeDetector', 'LineDetector', 'OCR',
     # concrete classes
-    'CannyEdgeDetector', 'ProbabilisticHoughLinesDetector', 'NaiveHoughLinesDetector'
+    'CannyEdgeDetector', 'ProbabilisticHoughLinesDetector', 'NaiveHoughLinesDetector',
+    'TesseractOCR',
 ]
 
 # core
-from enum import Enum
-from typing import List, Tuple
+import pytesseract
 import numpy as np
 import cv2
 # helpers
+from typing import List, Tuple
+from enum import Enum
 import logging
 
 
@@ -326,3 +328,63 @@ class NaiveHoughLinesDetector(LineDetector):
             :class:`numpy.ndarray`: image with detected lines
         """
         return cv2.HoughLinesP(image, *args, **kwargs)
+
+
+class OCR(Detector):
+    """Detect text in an image using Optical Character Recognition (OCR)
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        raise NotImplementedError
+
+
+class TesseractOCR(OCR):
+    """Does OCR using Google's Tesseract OCR engine
+
+    For more info about Tesseract, see https://tesseract-ocr.github.io/.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def detect(self, image: np.ndarray, **kwargs) -> np.ndarray:
+        """Detect text in an image using Google's Tesseract OCR engine
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to detect text in
+            kwargs: keyword arguments for ``tesseract`` CLI command.
+                Most important one are:
+
+                    - ``-l LANG``: language to use for OCR
+                    - ``--dpi N``: DPI to use for OCR
+                    - ``--oem N``: OCR engine mode
+                    - ``--psm N``: Page segmentation mode. Suggested values
+                        are 6 an 3. Defaults to 3.
+                    
+                An example:
+                    ``tesseract --oem 3 --psm 6 -l eng+fas --dpi 100 image.png output hocr pdf txt``
+                    
+
+        Returns:
+            :class:`numpy.ndarray`: image with detected text
+        """
+        # pytesseract requires kwargs to be string as CLI command
+        config: str = ''
+        if kwargs is not None:
+            for key, value in kwargs.items():
+                if len(key) > 1:     # e.g. --dpi 100
+                    config += f'--{key} {value} '
+                elif len(key) == 1:  # e.g -l fas
+                    config += f'-{key} {value} '
+                # args for CONFIGFILE
+                else:                # e.g. hocr
+                    config += f'{value} '
+        else:
+            config = '--dpi 100 -l eng+fas --oem 3 --psm 6'
+        config = config.strip()
+        text = pytesseract.image_to_string(image, config=config)
+        return text
+    
