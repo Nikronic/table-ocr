@@ -73,6 +73,7 @@ if __name__ == '__main__':
         filename = 'sample/orig/01-table.png'
         img_reader = io.CV2ImageReader()
         img = img_reader(filename)
+
         # copy image for visualization (draw on image)
         copy_image = np.copy(img)
 
@@ -80,10 +81,19 @@ if __name__ == '__main__':
         color_converter = preprocessors.CV2ImageColorConverter()
         gray_img = color_converter(image=img,
                                    mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY)
+
         # detect canny edges
         canny_detector = detectors.CannyEdgeDetector()
         canny_edges = canny_detector(image=gray_img, threshold1=50, threshold2=200)
-        
+
+        # detect lines
+        line_detector = detectors.ProbabilisticHoughLinesDetector()
+        lines = line_detector(image=canny_edges,
+                              rho=1,
+                              theta=np.pi / 180,
+                              threshold=100,
+                              minLinLength=350,
+                              maxLineGap=18)
 
     except Exception as e:
         logger.exception(e)
