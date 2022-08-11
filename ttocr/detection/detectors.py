@@ -151,6 +151,45 @@ class LineDetector(Detector):
         else:
             self.logger.warning(f'Line {line} is not horizontal or vertical')
     
+    def _filter_overlapping_lines(lines: List[np.ndarray],
+                                  sorting_index: int,
+                                  separation: float = 5) -> List[np.ndarray]:
+        """Filter lines that are overlapping with each other
+
+        Args:
+            lines (List[:class:`numpy.ndarray`]): list of lines to filter
+            sorting_index (int): index of line coordinate to sort by
+            separation (float, optional): minimum separation between lines
+                to be considered overlapping. Defaults to 5.
+
+        Returns:
+            List[:class:`numpy.ndarray`]:
+            list of subset of filtered lines. i.e. :math:`text{out} \in text{lines}`
+
+        TODO:
+
+            * improve this method to consider all lines simultaneously. Currently,
+                it only processed lines by the order they are sorted but if we use
+                something like clustering, then we can find out the lines that are
+                close to each other and then filter them out.
+                This will also eliminate the need for sorting and tuning the ``separation``
+                parameter for each image or perhaps, each group of lines.
+
+        """
+        filtered_lines: List[np.ndarray] = []
+        
+        lines = sorted(lines, key=lambda lines: lines[sorting_index])
+        for i in range(len(lines)):
+            current_line = lines[i]
+            if(i > 0):
+                previous_line = lines[i-1]
+                if ((current_line[sorting_index] - previous_line[sorting_index]) > separation):
+                    filtered_lines.append(current_line)
+            else:
+                filtered_lines.append(current_line)
+                    
+        return filtered_lines
+    
     def get_vertical_horizontal_lines(self,
             lines: List[np.ndarray]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Assigns lines to either direction of vertical or horizontal
@@ -167,14 +206,17 @@ class LineDetector(Detector):
         """
         vertical_lines: List[np.ndarray] = []
         horizontal_lines: List[np.ndarray] = []
+        # separate lines into vertical and horizontal
         for line in lines:
             direction = self._find_line_direction(line)
             if direction == LineDirection.VERTICAL:
                 vertical_lines.append(line)
             elif direction == LineDirection.HORIZONTAL:
                 horizontal_lines.append(line)
+        # remove overlapping lines
+        vertical_lines = self._filter_overlapping_lines(vertical_lines, 0)
+        horizontal_lines = self._filter_overlapping_lines(horizontal_lines, 1)
         return vertical_lines, horizontal_lines
-
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         raise NotImplementedError
