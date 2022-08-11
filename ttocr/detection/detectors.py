@@ -59,9 +59,9 @@ class CannyEdgeDetector(EdgeDetector):
 
     Notes:
         For more info about the algorithm, see
-        `here <https://docs.opencv.org/4.x/da/d22/tutorial_py_canny.html>`_. 
+        `here <https://docs.opencv.org/4.6.0/da/d22/tutorial_py_canny.html>`_. 
     
-    .. _cv2.Canny: https://docs.opencv.org/4.x/dd/d1a/group__imgproc__feature.html#ga04723e007ed888ddf11d9ba04e2232de
+    .. _cv2.Canny: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga04723e007ed888ddf11d9ba04e2232de
     """
 
     def __init__(self) -> None:
@@ -279,9 +279,9 @@ class ProbabilisticHoughLinesDetector(LineDetector):
 
     Notes:
         For more info about the algorithm, see
-        `here <https://docs.opencv.org/4.1.0/d9/d61/tutorial_hough_lines.html>`_.
+        `here <https://docs.opencv.org/4.6.0/d9/db0/tutorial_hough_lines.html>`_.
 
-    .. _cv2.HoughLinesP: https://docs.opencv.org/3.4/dd/d1a/group__imgproc__feature.html#ga8618180a5948286384e3b7ca02f6feeb
+    .. _cv2.HoughLinesP: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga8618180a5948286384e3b7ca02f6feeb
     """
 
     def __init__(self) -> None:
@@ -306,9 +306,9 @@ class NaiveHoughLinesDetector(LineDetector):
 
     Notes:
         For more info about the algorithm, see
-        `here <https://docs.opencv.org/4.1.0/d9/d61/tutorial_hough_lines.html>`_.
+        `here <https://docs.opencv.org/4.6.0/d9/db0/tutorial_hough_lines.html>`_.
 
-    .. _cv2.HoughLines: https://docs.opencv.org/3.4/dd/d1a/group__imgproc__feature.html#ga46b4e588934f6c8dfd509cc6e0e4545a
+    .. _cv2.HoughLines: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga46b4e588934f6c8dfd509cc6e0e4545a
     """
 
     def __init__(self) -> None:
