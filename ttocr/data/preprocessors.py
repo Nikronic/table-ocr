@@ -1,5 +1,5 @@
 __all__ = [
-
+    'ImageColorConverter', 'CV2ImageColorConverterModes'
 ]
 
 # core
@@ -76,7 +76,7 @@ class CV2ImageColorConverter(ImageColorConverter):
         """Verifies that ``mode`` exits in ``cv2.COLOR_*``
 
         Args:
-            mode (Any): mode to verify
+            mode (CV2ImageColorConverterModes): mode to verify
         """
         all_modes = CV2ImageColorConverterModes.__members__.items()
         if mode not in all_modes:
