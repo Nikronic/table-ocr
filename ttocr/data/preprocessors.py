@@ -43,7 +43,7 @@ class ImageColorConverter:
 
 class CV2ImageColorConverterModes(Enum):
     """Enum for color conversion modes in ``cv2.COLOR_*``
-    
+
     """
     BGR2RGB = cv2.COLOR_BGR2RGB
     RGB2BGR = cv2.COLOR_RGB2BGR
@@ -67,8 +67,9 @@ class CV2ImageColorConverterModes(Enum):
 
 class CV2ImageColorConverter(ImageColorConverter):
     """Convert image color space via ``OpenCV``
-    
+
     """
+
     def __init__(self) -> None:
         super().__init__()
 
