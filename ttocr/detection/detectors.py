@@ -218,6 +218,58 @@ class LineDetector(Detector):
         horizontal_lines = self._filter_overlapping_lines(horizontal_lines, 1)
         return vertical_lines, horizontal_lines
 
+    @staticmethod
+    def _crop_image(image: np.ndarray,
+                    x: int, y: int, w: int, h:int) -> np.ndarray:
+        """Crops an image to a specified region
+
+        Args:
+            image (:class:`numpy.ndarray`): image to crop
+            x (int): x coordinate of top left corner of crop
+            y (int): y coordinate of top left corner of crop
+            w (int): width of crop
+            h (int): height of crop
+        
+        Returns:
+            :class:`numpy.ndarray`: cropped image with ``shape=(h, w)``
+        """
+        return image[y:y+h, x:x+w]
+
+    def extract_region_of_interest(self, image: np.ndarray,
+                                   horizontal_lines: List[np.ndarray],
+                                   vertical_lines: List[np.ndarray],
+                                   left_line_index: int,
+                                   right_line_index: int,
+                                   top_line_index: int,
+                                   bottom_line_index: int,
+                                   offset: int = 4,
+                                   ) -> Tuple[np.ndarray, Tuple[int, ...]]:
+        """Extract ROI as cells bounded by horizontal and vertical lines
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to extract ROI from
+            horizontal_lines (List[:class:`numpy.ndarray`]): list of horizontal lines
+            vertical_lines (List[:class:`numpy.ndarray`]): list of vertical lines
+            left_line_index (int): index of left line
+            right_line_index (int): index of right line
+            top_line_index (int): index of top line
+            bottom_line_index (int): index of bottom line
+            offset (int, optional): offset from line to extract ROI. Defaults to 4.
+        
+        Returns:
+            :class:`numpy.ndarray`: extracted ROI
+        """
+        x1 = vertical_lines[left_line_index][2] + offset
+        y1 = horizontal_lines[top_line_index][3] + offset
+        x2 = vertical_lines[right_line_index][2] - offset
+        y2 = horizontal_lines[bottom_line_index][3] - offset    
+        w = x2 - x1
+        h = y2 - y1
+
+        # cropped ROI
+        roi = self._crop_image(image, x1, y1, w, h)
+        return roi, (x1, y1, w, h)
+
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         raise NotImplementedError
 
