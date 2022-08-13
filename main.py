@@ -5,6 +5,8 @@ from ttocr.data import io
 from ttocr.data import preprocessors
 # ours: detection
 from ttocr.detection import detectors
+# ours: utils
+from ttocr.version import VERSION as TTOCR_VERSION
 # devops
 import mlflow
 # helpers
@@ -12,7 +14,6 @@ from pathlib import Path
 import logging
 import shutil
 import sys
-import os
 
 
 if __name__ == '__main__':
@@ -67,6 +68,16 @@ if __name__ == '__main__':
         __libs_logger.addHandler(stdout_stream_handler)
         __libs_logger.addHandler(stderr_stream_handler)
 
+    # log experiment configs
+    MLFLOW_EXPERIMENT_NAME = f'FastAPI integration - {TTOCR_VERSION}'
+    mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+    MLFLOW_TAGS = {
+        'stage': 'dev'  # dev, beta, production
+    }
+    mlflow.set_tags(MLFLOW_TAGS)
+
+    logger.info(f'MLflow experiment name: {MLFLOW_EXPERIMENT_NAME}')
+    logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
 
     try:
         # read image
