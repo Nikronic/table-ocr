@@ -11,7 +11,9 @@ import pytesseract
 import numpy as np
 import cv2
 # helpers
-from typing import List, Tuple
+from typing import List, Tuple, Union
+import matplotlib.pyplot as plt
+from pathlib import Path
 from enum import Enum
 import logging
 
@@ -102,8 +104,8 @@ class LineDetector(Detector):
 
     def __init__(self) -> None:
         super().__init__()
-        self.horizontal_lines: List[np.ndarray] = []
-        self.vertical_lines: List[np.ndarray] = []
+        self.__horizontal_lines: List[np.ndarray] = []
+        self.__vertical_lines: List[np.ndarray] = []
 
     def __log(self):
         self.logger.info(
@@ -112,6 +114,22 @@ class LineDetector(Detector):
     def _reset_lines(self):
         self.horizontal_lines: List[np.ndarray] = []
         self.vertical_lines: List[np.ndarray] = []
+    
+    @property
+    def horizontal_lines(self) -> List[np.ndarray]:
+        return self.__horizontal_lines
+    
+    @property.setter
+    def horizontal_lines(self, lines: List[np.ndarray]):
+        self.__horizontal_lines = lines
+    
+    @property
+    def vertical_lines(self) -> List[np.ndarray]:
+        return self.__vertical_lines
+    
+    @property.setter
+    def vertical_lines(self, lines: List[np.ndarray]):
+        self.__vertical_lines = lines
 
     @staticmethod
     def _horizontal(line: np.ndarray) -> LineDirection:
@@ -219,58 +237,6 @@ class LineDetector(Detector):
         vertical_lines = self._filter_overlapping_lines(vertical_lines, 0)
         horizontal_lines = self._filter_overlapping_lines(horizontal_lines, 1)
         return vertical_lines, horizontal_lines
-
-    @staticmethod
-    def _crop_image(image: np.ndarray,
-                    x: int, y: int, w: int, h:int) -> np.ndarray:
-        """Crops an image to a specified region
-
-        Args:
-            image (:class:`numpy.ndarray`): image to crop
-            x (int): x coordinate of top left corner of crop
-            y (int): y coordinate of top left corner of crop
-            w (int): width of crop
-            h (int): height of crop
-        
-        Returns:
-            :class:`numpy.ndarray`: cropped image with ``shape=(h, w)``
-        """
-        return image[y:y+h, x:x+w]
-
-    def extract_region_of_interest(self, image: np.ndarray,
-                                   horizontal_lines: List[np.ndarray],
-                                   vertical_lines: List[np.ndarray],
-                                   left_line_index: int,
-                                   right_line_index: int,
-                                   top_line_index: int,
-                                   bottom_line_index: int,
-                                   offset: int = 4,
-                                   ) -> Tuple[np.ndarray, Tuple[int, ...]]:
-        """Extract ROI as cells bounded by horizontal and vertical lines
-        
-        Args:
-            image (:class:`numpy.ndarray`): image to extract ROI from
-            horizontal_lines (List[:class:`numpy.ndarray`]): list of horizontal lines
-            vertical_lines (List[:class:`numpy.ndarray`]): list of vertical lines
-            left_line_index (int): index of left line
-            right_line_index (int): index of right line
-            top_line_index (int): index of top line
-            bottom_line_index (int): index of bottom line
-            offset (int, optional): offset from line to extract ROI. Defaults to 4.
-        
-        Returns:
-            :class:`numpy.ndarray`: extracted ROI
-        """
-        x1 = vertical_lines[left_line_index][2] + offset
-        y1 = horizontal_lines[top_line_index][3] + offset
-        x2 = vertical_lines[right_line_index][2] - offset
-        y2 = horizontal_lines[bottom_line_index][3] - offset    
-        w = x2 - x1
-        h = y2 - y1
-
-        # cropped ROI
-        roi = self._crop_image(image, x1, y1, w, h)
-        return roi, (x1, y1, w, h)
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         raise NotImplementedError
@@ -387,4 +353,178 @@ class TesseractOCR(OCR):
         config = config.strip()
         text = pytesseract.image_to_string(image, config=config)
         return text
+
+
+class TableCellDetector(LineDetector):
+    """Detects cells of a table via detected vertical and horizontal lines
+
+    Notes:
+        For more info about obtaining lines, see :class:`LineDetector`
+        and other classes that subclass it, e.g. :class:`ProbabilisticHoughLinesDetector`.
+
+    TODO:
+        Separate table cell **detection** from table cell **OCR**. I.e. Detecting table cells
+        is an extension of detecting lines (forming a table cell from lines) and could be used
+        anywhere. But OCR is an absolute different task that could be done separately too.
+        So, now generate a 2d list of cell images via `TableCellDetector` and then create
+        a new class e.g. `TableCellOCR` that does OCR on each cell image.
+
+    """
+
+    def __init__(self, ocr: OCR = TesseractOCR) -> None:
+        """
+
+        Args:
+            ocr (OCR): OCR instance to use for text detection. Has
+                to be an instance of :class:`OCR`. E.g. see :class:`TesseractOCR`.
+                Defaults to :class:`TesseractOCR`.
+        """
+        super().__init__()
+
+        self.__ocr = ocr()
+        self.__ocred_cells: np.ndarray = None
+
+    @property
+    def ocred_cells(self) -> np.ndarray:
+        """A 2D array of detected cells
+        """
+        return self.__ocred_cells
     
+    @property.setter
+    def ocred_cells(self, value: np.ndarray) -> None:
+        self.__ocred_cells = value
+
+    @staticmethod
+    def _crop_image(image: np.ndarray,
+                    x: int, y: int, w: int, h:int) -> np.ndarray:
+        """Crops an image to a specified region
+
+        Args:
+            image (:class:`numpy.ndarray`): image to crop
+            x (int): x coordinate of top left corner of crop
+            y (int): y coordinate of top left corner of crop
+            w (int): width of crop
+            h (int): height of crop
+        
+        Returns:
+            :class:`numpy.ndarray`: cropped image with ``shape=(h, w)``
+        """
+        return image[y:y+h, x:x+w]
+
+    def _extract_region_of_interest(self, image: np.ndarray,
+                                   horizontal_lines: List[np.ndarray],
+                                   vertical_lines: List[np.ndarray],
+                                   row_index: int,
+                                   col_index: int,
+                                   offset: int = 4,
+                                   ) -> Tuple[np.ndarray, Tuple[int, ...]]:
+        """Extract ROI as cells bounded by horizontal and vertical lines
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to extract ROI from
+            horizontal_lines (List[:class:`numpy.ndarray`]): list of horizontal lines
+            vertical_lines (List[:class:`numpy.ndarray`]): list of vertical lines
+            row_index (int): index of row to extract columns from
+            col_index (int): index of column to extract
+            offset (int, optional): offset from line to extract ROI. Defaults to 4.
+        
+        Returns:
+            :class:`numpy.ndarray`: extracted ROI
+        """
+        left_line_index = col_index
+        right_line_index = col_index + 1
+        top_line_index = row_index
+        bottom_line_index = row_index + 1
+
+        x1 = vertical_lines[left_line_index][2] + offset
+        y1 = horizontal_lines[top_line_index][3] + offset
+        x2 = vertical_lines[right_line_index][2] - offset
+        y2 = horizontal_lines[bottom_line_index][3] - offset    
+        w = x2 - x1
+        h = y2 - y1
+
+        # cropped ROI
+        roi = self._crop_image(image, x1, y1, w, h)
+        return roi, (x1, y1, w, h)
+
+    @property
+    def _num_rows(self) -> int:
+        """Number of rows in table
+        """
+        return len(self.horizontal_lines) - 1
+    
+    @property
+    def _num_columns(self) -> int:
+        """Number of columns in table
+        """
+        return len(self.vertical_lines) - 1
+
+    def __call__(self, image: np.ndarray, plot: Union[Path, str, None] = None,
+                 *args, **kwargs) -> np.ndarray:
+        """
+
+        Args:
+            image (:class:`numpy.ndarray`): image to detect cells
+            plot (str, optional): Path to plot detected cells. If None, then
+                no plot is created. Defaults to None.
+                Note that this is for debugging purposes only hence hidden from class definition.
+
+        """
+        self.__log()
+
+        # all detected cells
+        # TODO: use np.empty instead for optimization
+        # ocred_cells: np.ndarray = np.empty((self._num_rows,
+        #                                     self._num_columns),
+        #                                     dtype=object)
+
+        # all ocred cells
+        ocred_cells: List[List[str]] = None
+
+        if plot is not None:
+            # count number of cells for subplot layout
+            counter = 0
+            fig = plt.figure(figsize=(12, 12))
+            fig.set_facecolor('k')
+
+        # iterate through all cells
+        for i in range(self._num_rows):
+            for j in range(self._num_columns):
+                ocred_row: List[str] = []
+                roi, (x, y, w, h) = self._extract_region_of_interest(
+                    image=image,
+                    horizontal_lines=self.horizontal_lines,
+                    vertical_lines=self.vertical_lines,
+                    row_index=i,
+                    col_index=j,
+                    offset=4,
+                )
+
+                # detect text via OCR
+                text = self.__ocr(roi)
+                ocred_row.extend(text)
+        
+                # plot detected cells as table
+                if plot is not None:
+                    counter += 1
+                    ax = fig.add_subplot(self._num_rows, self._num_columns, counter)
+                    plt.subplots_adjust(hspace=2)
+                    ax.axes.get_xaxis().set_visible(False)
+                    ax.axes.get_yaxis().set_visible(False)
+                    plt.imshow(roi)
+                    plt.title(text,
+                              fontdict={
+                                'fontsize':8,
+                                'verticalalignment': 'center'
+                              },
+                              color='white')
+            # save ocred row to list of ocred cells
+            ocred_cells.append(ocred_row)
+        
+        # convert list of ocred rows to numpy array as a table
+        self.ocred_cells = np.array(ocred_cells)
+
+        # save plot
+        if plot is not None:
+            plt.savefig({plot} / 'table-ocr.png', facecolor='k')
+            plt.close()

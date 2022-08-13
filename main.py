@@ -39,10 +39,12 @@ if __name__ == '__main__':
     MLFLOW_ARTIFACTS_PATH = Path('artifacts')
     MLFLOW_ARTIFACTS_LOGS_PATH = MLFLOW_ARTIFACTS_PATH / 'logs'
     MLFLOW_ARTIFACTS_CONFIGS_PATH = MLFLOW_ARTIFACTS_PATH / 'configs'
+    MLFLOW_ARTIFACTS_IMAGES_PATH = MLFLOW_ARTIFACTS_PATH / 'images'
     if not os.path.exists(MLFLOW_ARTIFACTS_PATH):
         os.makedirs(MLFLOW_ARTIFACTS_PATH)
         os.makedirs(MLFLOW_ARTIFACTS_LOGS_PATH)
         os.makedirs(MLFLOW_ARTIFACTS_CONFIGS_PATH)
+        os.makedirs(MLFLOW_ARTIFACTS_IMAGES_PATH)
     else:
         shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
     
@@ -94,6 +96,14 @@ if __name__ == '__main__':
                               threshold=100,
                               minLinLength=350,
                               maxLineGap=18)
+        
+        # define ocr engine
+        ocr_engine = detectors.TesseractOCR()
+        table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
+        table_cell_ocr.vertical_lines = lines[0]
+        table_cell_ocr.horizontal_lines = lines[1]
+        table_cell_ocr(image=gray_img,
+                       plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
     except Exception as e:
         logger.exception(e)
