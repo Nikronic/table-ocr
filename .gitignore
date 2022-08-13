@@ -60,3 +60,7 @@ target/
 
 # notebooks checkpoint
 .ipynb_checkpoints
+
+# mlflow
+artifacts/
+mlflow.db
