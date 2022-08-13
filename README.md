@@ -25,3 +25,6 @@ The branch that is main focused on deep learning methods for parsing the images 
 1. **OCR**: Note that OCRing itself is never considered a problem to be solved and I assume, always we can OCR a "clean" image. ("clean" image means an image that does not contain any noise or other issues that OCR can't see the text.). Given this fact, OCR engines are prebuilt and considered no fine tuning is needed. E.g. I only rely on tesseract or anything similar without any level of tuning or training.
 
 2. **Environments**: Since DL and ML libraries with classic approaches make the environment super big and might cause conflicts, it is better to use separate virtual environments for each branch.
+
+## Acknowledgement
+1. Codes in #ttocr-ml branch till commit http://192.168.4.116/Nikronic/tour-table-ocr/commit/894ab82e828374f9f413bbc12f6b9b1b7e9f8f6c are adopted from and or heavily inspired by https://github.com/fazlurnu/Text-Extraction-Table-Image. Thank you so much [Fazlur Rahman](https://github.com/fazlurnu)!
