@@ -1,10 +1,10 @@
-import imp
 # core
 import numpy as np
-import cv2
 # ours: data
 from ttocr.data import io
 from ttocr.data import preprocessors
+# ours: detection
+from ttocr.detection import detectors
 # devops
 import mlflow
 # helpers
@@ -13,8 +13,6 @@ import logging
 import shutil
 import sys
 import os
-
-from ttocr.detection import detectors
 
 
 if __name__ == '__main__':
@@ -40,13 +38,13 @@ if __name__ == '__main__':
     MLFLOW_ARTIFACTS_LOGS_PATH = MLFLOW_ARTIFACTS_PATH / 'logs'
     MLFLOW_ARTIFACTS_CONFIGS_PATH = MLFLOW_ARTIFACTS_PATH / 'configs'
     MLFLOW_ARTIFACTS_IMAGES_PATH = MLFLOW_ARTIFACTS_PATH / 'images'
-    if not os.path.exists(MLFLOW_ARTIFACTS_PATH):
-        os.makedirs(MLFLOW_ARTIFACTS_PATH)
-        os.makedirs(MLFLOW_ARTIFACTS_LOGS_PATH)
-        os.makedirs(MLFLOW_ARTIFACTS_CONFIGS_PATH)
-        os.makedirs(MLFLOW_ARTIFACTS_IMAGES_PATH)
-    else:
+    if MLFLOW_ARTIFACTS_PATH.exists():
         shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
+    if not MLFLOW_ARTIFACTS_PATH.exists():
+        MLFLOW_ARTIFACTS_PATH.mkdir(parents=True)
+        MLFLOW_ARTIFACTS_LOGS_PATH.mkdir(parents=True)
+        MLFLOW_ARTIFACTS_CONFIGS_PATH.mkdir(parents=True)
+        MLFLOW_ARTIFACTS_IMAGES_PATH.mkdir(parents=True)
     
     # Set up root logger, and add a file handler to root logger
     logger_handler = logging.FileHandler(filename=MLFLOW_ARTIFACTS_LOGS_PATH / 'main.log',
@@ -61,7 +59,7 @@ if __name__ == '__main__':
     logger.addHandler(stderr_stream_handler)
 
     # set libs to log to our logging config
-    __libs = []
+    __libs = ['ttocr']
     for __l in __libs:
         __libs_logger = logging.getLogger(__l)
         __libs_logger.setLevel(VERBOSE)
@@ -94,7 +92,7 @@ if __name__ == '__main__':
                               rho=1,
                               theta=np.pi / 180,
                               threshold=100,
-                              minLinLength=350,
+                              minLineLength=350,
                               maxLineGap=18)
         
         # define ocr engine

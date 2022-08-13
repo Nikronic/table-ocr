@@ -3,7 +3,7 @@ __all__ = [
     'Detector', 'EdgeDetector', 'LineDetector', 'OCR',
     # concrete classes
     'CannyEdgeDetector', 'ProbabilisticHoughLinesDetector', 'NaiveHoughLinesDetector',
-    'TesseractOCR',
+    'TesseractOCR', 'TableCellDetector'
 ]
 
 # core
@@ -31,15 +31,14 @@ class Detector:
         self.logger = logging.getLogger(
             logger.name+'.'+self.__class__.__name__)
 
-    def __log(self):
+    def _log(self):
         raise NotImplementedError
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         raise NotImplementedError
 
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
-        self.__log()
-        return self.detect(image, *args, **kwargs)
+        raise NotImplementedError
 
 
 class EdgeDetector(Detector):
@@ -50,12 +49,9 @@ class EdgeDetector(Detector):
     def __init__(self) -> None:
         super().__init__()
 
-    def __log(self):
+    def _log(self):
         self.logger.info(
             f'{self.__class__.__name__} edge detection is performed')
-
-    def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
-        raise NotImplementedError
 
 
 class CannyEdgeDetector(EdgeDetector):
@@ -83,6 +79,11 @@ class CannyEdgeDetector(EdgeDetector):
             :class:`numpy.ndarray`: image with detected edges 
         """
         return cv2.Canny(image, *args, **kwargs)
+    
+    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        self._log()
+        return self.detect(image, *args, **kwargs)
+
 
 class LineDirection(Enum):
     """Enum for line direction
@@ -107,7 +108,7 @@ class LineDetector(Detector):
         self.__horizontal_lines: List[np.ndarray] = []
         self.__vertical_lines: List[np.ndarray] = []
 
-    def __log(self):
+    def _log(self):
         self.logger.info(
             f'{self.__class__.__name__} line detection is performed')
 
@@ -119,7 +120,7 @@ class LineDetector(Detector):
     def horizontal_lines(self) -> List[np.ndarray]:
         return self.__horizontal_lines
     
-    @property.setter
+    @horizontal_lines.setter
     def horizontal_lines(self, lines: List[np.ndarray]):
         self.__horizontal_lines = lines
     
@@ -127,7 +128,7 @@ class LineDetector(Detector):
     def vertical_lines(self) -> List[np.ndarray]:
         return self.__vertical_lines
     
-    @property.setter
+    @vertical_lines.setter
     def vertical_lines(self, lines: List[np.ndarray]):
         self.__vertical_lines = lines
 
@@ -141,7 +142,7 @@ class LineDetector(Detector):
         Returns:
             LineDirection: Direction of line
         """
-        return line[0] == line[2]
+        return line[1] == line[3]
     
     @staticmethod
     def _vertical(line: np.ndarray) -> LineDirection:
@@ -153,7 +154,7 @@ class LineDetector(Detector):
         Returns:
             LineDirection: Direction of line
         """
-        return line[1] == line[3]
+        return line[0] == line[2]
     
     def _find_line_direction(self, line: np.ndarray) -> LineDirection:
         """Find direction of line
@@ -171,6 +172,7 @@ class LineDetector(Detector):
         else:
             self.logger.warning(f'Line {line} is not horizontal or vertical')
     
+    @staticmethod
     def _filter_overlapping_lines(lines: List[np.ndarray],
                                   sorting_index: int,
                                   separation: float = 5) -> List[np.ndarray]:
@@ -227,15 +229,19 @@ class LineDetector(Detector):
         vertical_lines: List[np.ndarray] = []
         horizontal_lines: List[np.ndarray] = []
         # separate lines into vertical and horizontal
+        # TODO: optimize this by boolean mask than for loop
         for line in lines:
+            line = line.flatten()
             direction = self._find_line_direction(line)
             if direction == LineDirection.VERTICAL:
                 vertical_lines.append(line)
             elif direction == LineDirection.HORIZONTAL:
                 horizontal_lines.append(line)
         # remove overlapping lines
-        vertical_lines = self._filter_overlapping_lines(vertical_lines, 0)
-        horizontal_lines = self._filter_overlapping_lines(horizontal_lines, 1)
+        vertical_lines = self._filter_overlapping_lines(lines=vertical_lines,
+                                                        sorting_index=0)
+        horizontal_lines = self._filter_overlapping_lines(lines=horizontal_lines,
+                                                          sorting_index=1)
         return vertical_lines, horizontal_lines
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
@@ -267,6 +273,16 @@ class ProbabilisticHoughLinesDetector(LineDetector):
             :class:`numpy.ndarray`: image with detected lines
         """
         return cv2.HoughLinesP(image, *args, **kwargs)
+    
+    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        self._log()
+        self._reset_lines()
+
+        # get all lines
+        lines = self.detect(image, *args, **kwargs)
+        # separate lines into vertical and horizontal
+        vertical_lines, horizontal_lines = self.get_vertical_horizontal_lines(lines)
+        return vertical_lines, horizontal_lines
 
 
 class NaiveHoughLinesDetector(LineDetector):
@@ -294,6 +310,16 @@ class NaiveHoughLinesDetector(LineDetector):
             :class:`numpy.ndarray`: image with detected lines
         """
         return cv2.HoughLinesP(image, *args, **kwargs)
+    
+    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        self._log()
+        self._reset_lines()
+
+        # get all lines
+        lines = self.detect(image, *args, **kwargs)
+        # separate lines into vertical and horizontal
+        vertical_lines, horizontal_lines = self.get_vertical_horizontal_lines(lines)
+        return vertical_lines, horizontal_lines
 
 
 class OCR(Detector):
@@ -302,9 +328,6 @@ class OCR(Detector):
 
     def __init__(self) -> None:
         super().__init__()
-
-    def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
-        raise NotImplementedError
 
 
 class TesseractOCR(OCR):
@@ -315,6 +338,10 @@ class TesseractOCR(OCR):
 
     def __init__(self) -> None:
         super().__init__()
+        self._log()
+
+    def _log(self):
+        self.logger.info("Using Tesseract OCR")
 
     def detect(self, image: np.ndarray, **kwargs) -> np.ndarray:
         """Detect text in an image using Google's Tesseract OCR engine
@@ -354,6 +381,9 @@ class TesseractOCR(OCR):
         text = pytesseract.image_to_string(image, config=config)
         return text
 
+    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        return self.detect(image, *args, **kwargs)
+
 
 class TableCellDetector(LineDetector):
     """Detects cells of a table via detected vertical and horizontal lines
@@ -381,8 +411,24 @@ class TableCellDetector(LineDetector):
         """
         super().__init__()
 
-        self.__ocr = ocr()
+        self.__ocr = ocr
         self.__ocred_cells: np.ndarray = None
+    
+    @property
+    def _num_rows(self) -> int:
+        """Number of rows in table
+        """
+        return len(self.horizontal_lines) - 1
+    
+    @property
+    def _num_columns(self) -> int:
+        """Number of columns in table
+        """
+        return len(self.vertical_lines) - 1
+
+    def _log(self):
+        self.logger.info('Using TableCellDetector')
+        self.logger.info(f'Possible table size: {self._num_rows} x {self._num_columns}')
 
     @property
     def ocred_cells(self) -> np.ndarray:
@@ -390,7 +436,7 @@ class TableCellDetector(LineDetector):
         """
         return self.__ocred_cells
     
-    @property.setter
+    @ocred_cells.setter
     def ocred_cells(self, value: np.ndarray) -> None:
         self.__ocred_cells = value
 
@@ -447,19 +493,9 @@ class TableCellDetector(LineDetector):
         roi = self._crop_image(image, x1, y1, w, h)
         return roi, (x1, y1, w, h)
 
-    @property
-    def _num_rows(self) -> int:
-        """Number of rows in table
-        """
-        return len(self.horizontal_lines) - 1
-    
-    @property
-    def _num_columns(self) -> int:
-        """Number of columns in table
-        """
-        return len(self.vertical_lines) - 1
 
-    def __call__(self, image: np.ndarray, plot: Union[Path, str, None] = None,
+    def __call__(self, image: np.ndarray,
+                 plot: Union[Path, str, None] = None,
                  *args, **kwargs) -> np.ndarray:
         """
 
@@ -470,7 +506,7 @@ class TableCellDetector(LineDetector):
                 Note that this is for debugging purposes only hence hidden from class definition.
 
         """
-        self.__log()
+        self._log()
 
         # all detected cells
         # TODO: use np.empty instead for optimization
@@ -479,7 +515,7 @@ class TableCellDetector(LineDetector):
         #                                     dtype=object)
 
         # all ocred cells
-        ocred_cells: List[List[str]] = None
+        ocred_cells: List[List[str]] = []
 
         if plot is not None:
             # count number of cells for subplot layout
@@ -491,7 +527,7 @@ class TableCellDetector(LineDetector):
         for i in range(self._num_rows):
             for j in range(self._num_columns):
                 ocred_row: List[str] = []
-                roi, (x, y, w, h) = self._extract_region_of_interest(
+                roi, _ = self._extract_region_of_interest(
                     image=image,
                     horizontal_lines=self.horizontal_lines,
                     vertical_lines=self.vertical_lines,
@@ -522,9 +558,9 @@ class TableCellDetector(LineDetector):
             ocred_cells.append(ocred_row)
         
         # convert list of ocred rows to numpy array as a table
-        self.ocred_cells = np.array(ocred_cells)
+        self.ocred_cells = np.array(ocred_cells, dtype=object)
 
         # save plot
         if plot is not None:
-            plt.savefig({plot} / 'table-ocr.png', facecolor='k')
+            plt.savefig(plot / 'table-ocr.png', facecolor='k')
             plt.close()

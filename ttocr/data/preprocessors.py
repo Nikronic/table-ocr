@@ -79,8 +79,8 @@ class CV2ImageColorConverter(ImageColorConverter):
         Args:
             mode (CV2ImageColorConverterModes): mode to verify
         """
-        all_modes = CV2ImageColorConverterModes.__members__.items()
-        if mode not in all_modes:
+
+        if mode not in CV2ImageColorConverterModes:
             raise ValueError(f'Invalid mode: {mode}')
 
     def __log(self, mode: CV2ImageColorConverterModes) -> None:
@@ -91,4 +91,4 @@ class CV2ImageColorConverter(ImageColorConverter):
                  *args, **kwargs) -> np.ndarray:
         self.__validate_mode(mode)
         self.__log(mode)
-        return cv2.cvtColor(image, mode, *args, **kwargs)
+        return cv2.cvtColor(image, mode.value, *args, **kwargs)
