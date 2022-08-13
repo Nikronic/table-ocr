@@ -1,7 +1,17 @@
 {
     "cSpell.words": [
+        "CONFIGFILE",
+        "facecolor",
+        "fontdict",
+        "hspace",
+        "imread",
+        "ocred",
+        "savefig",
         "ttocr",
         "ttocrdl",
-        "ttocrml"
+        "ttocrml",
+        "verticalalignment",
+        "xaxis",
+        "yaxis"
     ]
 }
