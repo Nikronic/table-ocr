@@ -525,8 +525,8 @@ class TableCellDetector(LineDetector):
 
         # iterate through all cells
         for i in range(self._num_rows):
+            ocred_row: List[str] = []
             for j in range(self._num_columns):
-                ocred_row: List[str] = []
                 roi, _ = self._extract_region_of_interest(
                     image=image,
                     horizontal_lines=self.horizontal_lines,
@@ -538,7 +538,7 @@ class TableCellDetector(LineDetector):
 
                 # detect text via OCR
                 text = self.__ocr(roi)
-                ocred_row.extend(text)
+                ocred_row.append(text)
         
                 # plot detected cells as table
                 if plot is not None:
@@ -556,11 +556,11 @@ class TableCellDetector(LineDetector):
                               color='white')
             # save ocred row to list of ocred cells
             ocred_cells.append(ocred_row)
-        
-        # convert list of ocred rows to numpy array as a table
-        self.ocred_cells = np.array(ocred_cells, dtype=object)
+
+        self.ocred_cells = ocred_cells
 
         # save plot
         if plot is not None:
             plt.savefig(plot / 'table-ocr.png', facecolor='k')
             plt.close()
+        return self.ocred_cells
