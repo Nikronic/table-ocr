@@ -27,4 +27,7 @@ The branch that is main focused on deep learning methods for parsing the images 
 2. **Environments**: Since DL and ML libraries with classic approaches make the environment super big and might cause conflicts, it is better to use separate virtual environments for each branch.
 
 ## Acknowledgement
-1. Codes in #ttocr-ml branch till commit http://192.168.4.116/Nikronic/tour-table-ocr/commit/894ab82e828374f9f413bbc12f6b9b1b7e9f8f6c are adopted from and or heavily inspired by https://github.com/fazlurnu/Text-Extraction-Table-Image. Thank you so much [Fazlur Rahman](https://github.com/fazlurnu)!
+1. Codes are adopted from and or heavily inspired by following open source heroes:
+   1. Basic table https://github.com/fazlurnu/Text-Extraction-Table-Image.
+   2. https://github.com/jiahuei/document-scanner-opencv-ws
+   3. 
