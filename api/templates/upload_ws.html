@@ -24,26 +24,24 @@
       <div class="column is-narrow">
         <input type="file" id="files" accept="image/*" />
       </div>
+      <h4 class="pt-2">Success = <span id="det_success">pending</span></h4>
     </div>
   </section>
   <section class="section">
     <div class="columns is-centered has-text-centered content">
-      <div class="column is-one-quarter">
+      <div class="column">
         <h2>Source</h2>
         <img src="{{url_for('static', path='default.jpg')}}" id="doc_source" width="600"/>
       </div>
-      <div class="column is-one-quarter">
-        <h2>Visualization</h2>
-        <img src="{{url_for('static', path='default.jpg')}}" id="doc_vis" width="600"/>
-      </div>
-      <div class="column is-one-quarter">
+      <div class="column">
         <h2>Result</h2>
-        <h4 class="pt-2">Success = <span id="det_success">pending</span></h4>
         <img src="{{url_for('static', path='default.jpg')}}" id="doc_result" />
-        <h4 class="pt-5">Doc points</h4>
-        <p id="doc_points"></p>
       </div>
     </div>
+  </section>
+  <section class="section">
+      <div id="dvTable" class="columns is-centered has-text-centered content">
+      </div>
   </section>
   <script>
     var ws = new WebSocket(`ws://${document.domain}:${location.port}/ttocr/debug_upload`);
@@ -66,15 +64,36 @@
     }
     document.getElementById('files').addEventListener('change', handleFileSelect, false);
 
+    function createTable(tableData) {
+      var table = document.createElement('table');
+      var tableBody = document.createElement('tbody');
+
+      tableData.forEach(function(rowData) {
+        var row = document.createElement('tr');
+
+        rowData.forEach(function(cellData) {
+          var cell = document.createElement('td');
+          cell.appendChild(document.createTextNode(cellData));
+          row.appendChild(cell);
+        });
+
+        tableBody.appendChild(row);
+      });
+
+      table.appendChild(tableBody);
+      // document.body.appendChild(table);
+      return table
+    }
+
     function updateImage(data, img) {
         img.src = 'data:image/jpeg;base64,' + data;
     }
     ws.onmessage = function(event) {
         data = JSON.parse(event.data);
-        updateImage(data.doc, document.getElementById('doc_result'));
-        updateImage(data.doc_vis, document.getElementById('doc_vis'));
+        updateImage(data.doc_vis, document.getElementById('doc_result'));
+        // updateImage(data.doc_vis, document.getElementById('doc_vis'));
         document.getElementById('det_success').innerHTML = data.det_success;
-        document.getElementById('doc_points').innerHTML = data.doc_points;
+        document.getElementById('dvTable').appendChild(createTable(data.ocred_cells));  
     };
 
   </script>

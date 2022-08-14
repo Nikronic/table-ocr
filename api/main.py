@@ -179,7 +179,7 @@ async def ocr_doc(websocket: fastapi.WebSocket, mode: str):
                 "det_success": 1,
                 "doc": ndarray_to_base64str(img),
                 "doc_vis": ndarray_to_base64str(res[1]),
-                "doc_points": list(res[0]),
+                "ocred_cells": res[0],
             }
 
             elapsed_time = perf_counter() - tic
