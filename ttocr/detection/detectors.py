@@ -539,6 +539,7 @@ class TableCellDetector(LineDetector):
                 # detect text via OCR
                 text = self.__ocr(roi)
                 ocred_row.append(text)
+                self.logger.debug(f'Cell {i}x{j} has text: "{text}"')
         
                 # plot detected cells as table
                 if plot is not None:
@@ -561,6 +562,16 @@ class TableCellDetector(LineDetector):
 
         # save plot
         if plot is not None:
+            fig.canvas.draw()
+            image_from_plot = np.frombuffer(fig.canvas.tostring_rgb(),
+                                            dtype=np.uint8)
+            image_from_plot = image_from_plot.reshape(
+                fig.canvas.get_width_height()[::-1] + (3,)
+            )
+
             plt.savefig(plot / 'table-ocr.png', facecolor='k')
             plt.close()
+
+            # for debug, return texts and image with annotations
+            return self.ocred_cells, image_from_plot
         return self.ocred_cells

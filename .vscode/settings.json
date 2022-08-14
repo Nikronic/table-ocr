@@ -3,6 +3,7 @@
         "CONFIGFILE",
         "facecolor",
         "fontdict",
+        "frombuffer",
         "hspace",
         "imread",
         "ocred",
