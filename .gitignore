@@ -64,3 +64,4 @@ target/
 # mlflow
 artifacts/
 mlflow.db
+api/temp

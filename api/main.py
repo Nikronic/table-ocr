@@ -34,63 +34,12 @@ SEED = 8569
 VERBOSE = logging.DEBUG
 DEVICE = 'cuda'
 
-# configure MLFlow tracking remote server
-#  see `mlflow-server.sh` for port and hostname. Since
-#  we are running locally, we can use the default values.
-mlflow.set_tracking_uri('http://localhost:5000')
-
 # configure logging
 logger = logging.getLogger(__name__)
 logger.setLevel(VERBOSE)
 logger_formatter = logging.Formatter(
     "[%(name)s: %(asctime)s] {%(lineno)d} %(levelname)s - %(message)s", "%m-%d %H:%M:%S"
 )
-
-# setup dirs for mlflow artifacts (logs, configs, etc)
-MLFLOW_ARTIFACTS_PATH = Path('artifacts')
-MLFLOW_ARTIFACTS_LOGS_PATH = MLFLOW_ARTIFACTS_PATH / 'logs'
-MLFLOW_ARTIFACTS_CONFIGS_PATH = MLFLOW_ARTIFACTS_PATH / 'configs'
-MLFLOW_ARTIFACTS_IMAGES_PATH = MLFLOW_ARTIFACTS_PATH / 'images'
-if MLFLOW_ARTIFACTS_PATH.exists():
-    shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
-if not MLFLOW_ARTIFACTS_PATH.exists():
-    MLFLOW_ARTIFACTS_PATH.mkdir(parents=True)
-    MLFLOW_ARTIFACTS_LOGS_PATH.mkdir(parents=True)
-    MLFLOW_ARTIFACTS_CONFIGS_PATH.mkdir(parents=True)
-    MLFLOW_ARTIFACTS_IMAGES_PATH.mkdir(parents=True)
-
-# Set up root logger, and add a file handler to root logger
-logger_handler = logging.FileHandler(filename=MLFLOW_ARTIFACTS_LOGS_PATH / 'main.log',
-                                        mode='w')
-stdout_stream_handler = logging.StreamHandler(stream=sys.stdout)
-stderr_stream_handler = logging.StreamHandler(stream=sys.stderr)
-logger_handler.setFormatter(logger_formatter)
-stdout_stream_handler.setFormatter(logger_formatter)
-stderr_stream_handler.setFormatter(logger_formatter)
-logger.addHandler(logger_handler)  # type: ignore
-logger.addHandler(stdout_stream_handler)
-logger.addHandler(stderr_stream_handler)
-
-# set libs to log to our logging config
-__libs = ['ttocr']
-for __l in __libs:
-    __libs_logger = logging.getLogger(__l)
-    __libs_logger.setLevel(VERBOSE)
-    __libs_logger.addHandler(logger_handler)
-    __libs_logger.addHandler(stdout_stream_handler)
-    __libs_logger.addHandler(stderr_stream_handler)
-
-# log experiment configs
-MLFLOW_EXPERIMENT_NAME = f'FastAPI integration - {TTOCR_VERSION}'
-mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-MLFLOW_TAGS = {
-    'stage': 'dev'  # dev, beta, production
-}
-mlflow.set_tags(MLFLOW_TAGS)
-
-logger.info(f'MLflow experiment name: {MLFLOW_EXPERIMENT_NAME}')
-logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
-
 
 # setup fastapi app
 app = fastapi.FastAPI()
@@ -174,7 +123,7 @@ async def ocr_doc(websocket: fastapi.WebSocket, mode: str):
             table_cell_ocr.vertical_lines = lines[0]
             table_cell_ocr.horizontal_lines = lines[1]
             res = table_cell_ocr(image=gray_img,
-                                 plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+                                 plot=Path('temp'))
             output = {
                 "det_success": 1,
                 "doc": ndarray_to_base64str(img),
@@ -190,14 +139,6 @@ async def ocr_doc(websocket: fastapi.WebSocket, mode: str):
     except Exception as e:
         logger.exception(e)
         raise e
-    
-    # cleanup code
-    finally:
-        # log artifacts (logs, saved files, etc)
-        mlflow.log_artifacts(MLFLOW_ARTIFACTS_PATH)
-        # delete redundant logs, files that are logged as artifact
-        shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
-    
 
 @app.get('/', response_class=fastapi.responses.HTMLResponse)
 @app.get('/upload', response_class=fastapi.responses.HTMLResponse)
