@@ -716,7 +716,16 @@ class TableCellDetector(LineDetector):
         x1 = vertical_lines[left_line_index][2] + offset
         y1 = horizontal_lines[top_line_index][3] + offset
         x2 = vertical_lines[right_line_index][2] - offset
-        y2 = horizontal_lines[bottom_line_index][3] - offset    
+        y2 = horizontal_lines[bottom_line_index][3] - offset
+        
+        # relax offsets when x1=x2 or y1=y2
+        if x1 == x2:
+            x1 = x1 - (offset // 2)
+            x2 = x2 + (offset // 2)
+        if y1 == y2:
+            y1 = y1 - (offset // 2)
+            y2 = y2 + (offset // 2)
+        
         w = x2 - x1
         h = y2 - y1
 
