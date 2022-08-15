@@ -24,14 +24,16 @@ logger = logging.getLogger(__name__)
 
 class Detector:
     """Base class for all detectors such as edge and line detectors
-
     """
 
     def __init__(self) -> None:
         self.logger = logging.getLogger(
             logger.name+'.'+self.__class__.__name__)
 
-    def _log(self):
+    def _get_class_attributes(self) -> dict:
+        return dict(self.__dict__)
+
+    def _log(self, *args, **kwargs):
         raise NotImplementedError
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
@@ -43,15 +45,16 @@ class Detector:
 
 class EdgeDetector(Detector):
     """Detect edges in an image
-
     """
 
     def __init__(self) -> None:
         super().__init__()
 
-    def _log(self):
+    def _log(self, *args, **kwargs):
         self.logger.info(
-            f'{self.__class__.__name__} edge detection is performed')
+            f'{self.__class__.__name__} edge detection is performed'
+            f' with kwargs: {kwargs}'
+        )
 
 
 class CannyEdgeDetector(EdgeDetector):
@@ -64,8 +67,28 @@ class CannyEdgeDetector(EdgeDetector):
     .. _cv2.Canny: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga04723e007ed888ddf11d9ba04e2232de
     """
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 threshold1: float,
+                 threshold2: float,
+                 aperture_size: int = 3,
+                 L2_gradient: bool = False) -> None:
+        """Initialize Canny edge detector
+
+        Notes:
+            For more info about the algorithm, see class docstring.
+
+        Args:
+            threshold1 (float): first threshold for the hysteresis procedure
+            threshold2 (float): second threshold for the hysteresis procedure
+            aperture_size (int): size of the Sobel kernel to be used
+            L2_gradient (bool): use L2 norm rather than L1
+        """
         super().__init__()
+
+        self.threshold1 = threshold1
+        self.threshold2 = threshold2
+        self.aperture_size = aperture_size
+        self.L2_gradient = L2_gradient
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         """Detect edges using ``cv2.Canny``
@@ -81,8 +104,18 @@ class CannyEdgeDetector(EdgeDetector):
         return cv2.Canny(image, *args, **kwargs)
     
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
-        self._log()
-        return self.detect(image, *args, **kwargs)
+        # if kwargs provided, override class init
+        self.threshold1 = kwargs.get('threshold1', self.threshold1)
+        self.threshold2 = kwargs.get('threshold2', self.threshold2)
+        self.aperture_size = kwargs.get('aperture_size', self.aperture_size)
+        self.L2_gradient = kwargs.get('L2_gradient', self.L2_gradient)
+
+        self._log(**self._get_class_attributes())
+        return self.detect(image,
+                           threshold1=self.threshold1,
+                           threshold2=self.threshold2,
+                           apertureSize=self.aperture_size,
+                           L2gradient=self.L2_gradient)
 
 
 class LineDirection(Enum):
@@ -108,10 +141,11 @@ class LineDetector(Detector):
         self.__horizontal_lines: List[np.ndarray] = []
         self.__vertical_lines: List[np.ndarray] = []
 
-    def _log(self):
+    def _log(self, *args, **kwargs):
         self.logger.info(
-            f'{self.__class__.__name__} line detection is performed')
-
+            f'{self.__class__.__name__} line detection is performed'
+            f' with kwargs: {kwargs}'
+        )
     def _reset_lines(self):
         self.horizontal_lines: List[np.ndarray] = []
         self.vertical_lines: List[np.ndarray] = []
@@ -258,8 +292,34 @@ class ProbabilisticHoughLinesDetector(LineDetector):
     .. _cv2.HoughLinesP: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga8618180a5948286384e3b7ca02f6feeb
     """
 
-    def __init__(self) -> None:
+    def __init__(self, 
+                 rho: float,
+                 theta: float,
+                 threshold: int,
+                 min_line_length: int = 0,
+                 max_line_gap: int = 0) -> None:
+        """Initialize the detector
+
+        Notes:
+            For more info about the algorithm, see class docstring.
+
+        Args:
+            rho (float): distance resolution of the accumulator in pixels
+            theta (float): angular resolution of the accumulator in radians
+            threshold (int): accumulator threshold parameter. Only those lines 
+                are returned that get enough votes ( > threshold )
+            min_line_length (int, optional): minimum line length. Line segments
+                shorter than that are rejected. Defaults to 0.
+            max_line_gap (int, optional): maximum allowed gap between points on
+                the same line to link them. Defaults to 0.
+        """
         super().__init__()
+
+        self.rho = rho
+        self.theta = theta
+        self.threshold = threshold
+        self.min_line_length = min_line_length
+        self.max_line_gap = max_line_gap
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         """Detect lines using ``cv2.HoughLinesP``
@@ -275,11 +335,23 @@ class ProbabilisticHoughLinesDetector(LineDetector):
         return cv2.HoughLinesP(image, *args, **kwargs)
     
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
-        self._log()
+        # if kwargs provided, override class attributes
+        self.rho = kwargs.get('rho', self.rho)
+        self.theta = kwargs.get('theta', self.theta)
+        self.threshold = kwargs.get('threshold', self.threshold)
+        self.min_line_length = kwargs.get('min_line_length', self.min_line_length)
+        self.max_line_gap = kwargs.get('max_line_gap', self.max_line_gap)
+        
+        self._log(**self._get_class_attributes())
         self._reset_lines()
 
         # get all lines
-        lines = self.detect(image, *args, **kwargs)
+        lines = self.detect(image,
+                            rho=self.rho,
+                            theta=self.theta,
+                            threshold=self.threshold,
+                            minLineLength=self.min_line_length,
+                            maxLineGap=self.max_line_gap)
         # separate lines into vertical and horizontal
         vertical_lines, horizontal_lines = self.get_vertical_horizontal_lines(lines)
         return vertical_lines, horizontal_lines
@@ -295,8 +367,45 @@ class NaiveHoughLinesDetector(LineDetector):
     .. _cv2.HoughLines: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga46b4e588934f6c8dfd509cc6e0e4545a
     """
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 rho: float,
+                 theta: float,
+                 threshold: int,
+                 srn: float = 0.,
+                 stn: float = 0.,
+                 min_theta: float = 0.,
+                 max_theta: float = np.pi) -> None:
+        """Initialize the detector
+
+        
+        Notes:
+            For more info about the algorithm, see class docstring.
+
+        Args:
+            rho (float): distance resolution of the accumulator in pixels
+            theta (float): angular resolution of the accumulator in radians
+            threshold (int): accumulator threshold parameter. Only those lines
+                are returned that get enough votes ( > threshold )
+            srn (float, optional): used to specify the maximum difference in
+                radius between the circle centers, for the points to be
+                considered as in the same circle. Defaults to 0.
+            stn (float, optional): used to specify the maximum difference in
+                theta between the circle centers, for the points to be
+                considered as in the same circle. Defaults to 0.
+            min_theta (float, optional): minimum angle to check for lines.
+                Defaults to 0.
+            max_theta (float, optional): maximum angle to check for lines.
+                Defaults to :math:`\pi`.
+        """
         super().__init__()
+
+        self.rho = rho
+        self.theta = theta
+        self.threshold = threshold
+        self.srn = srn
+        self.stn = stn
+        self.min_theta = min_theta
+        self.max_theta = max_theta
 
     def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         """Detect lines using ``cv2.HoughLines``
@@ -312,11 +421,27 @@ class NaiveHoughLinesDetector(LineDetector):
         return cv2.HoughLinesP(image, *args, **kwargs)
     
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
-        self._log()
+        # if kwargs provided, override class attributes
+        self.rho = kwargs.get('rho', self.rho)
+        self.theta = kwargs.get('theta', self.theta)
+        self.threshold = kwargs.get('threshold', self.threshold)
+        self.srn = kwargs.get('srn', self.srn)
+        self.stn = kwargs.get('stn', self.stn)
+        self.min_theta = kwargs.get('min_theta', self.min_theta)
+        self.max_theta = kwargs.get('max_theta', self.max_theta)
+
+        self._log(**self._get_class_attributes())
         self._reset_lines()
 
         # get all lines
-        lines = self.detect(image, *args, **kwargs)
+        lines = self.detect(image,
+                            rho=self.rho,
+                            theta=self.theta,
+                            threshold=self.threshold,
+                            srn=self.srn,
+                            stn=self.stn,
+                            min_theta=self.min_theta,
+                            max_theta=self.max_theta)
         # separate lines into vertical and horizontal
         vertical_lines, horizontal_lines = self.get_vertical_horizontal_lines(lines)
         return vertical_lines, horizontal_lines
@@ -329,6 +454,12 @@ class OCR(Detector):
     def __init__(self) -> None:
         super().__init__()
 
+    def _log(self, *args, **kwargs):
+        self.logger.info(
+            f'{self.__class__.__name__} OCR is performed'
+            f' with kwargs: {kwargs}'
+        )
+
 
 class TesseractOCR(OCR):
     """Does OCR using Google's Tesseract OCR engine
@@ -336,14 +467,80 @@ class TesseractOCR(OCR):
     For more info about Tesseract, see https://tesseract-ocr.github.io/.
     """
 
-    def __init__(self) -> None:
+    def __init__(self,
+                 l: str = 'eng+fas',
+                 dpi: int = 100,
+                 psm: int = 6,
+                 oem: int = 3,
+                 *args
+                ) -> None:
+        """Initialize the detector
+
+        Notes:
+            For more info about Tesseract, see class docstring.
+
+        Args:
+            l (str, optional): language to use. Defaults to 'eng+fas'.
+                You can add more languages by ``'lang1+lang2+...+langN'``
+            dpi (int, optional): dpi to use. Defaults to 100.
+            psm (int, optional): page segmentation mode. Defaults to 6.
+            oem (int, optional): OCR engine mode. Defaults to 3.
+            *args: arguments for ``tesseract``
+        """
         super().__init__()
-        self._log()
 
-    def _log(self):
-        self.logger.info("Using Tesseract OCR")
+        self.l = l
+        self.dpi = dpi
+        self.psm = psm
+        self.oem = oem
+        self.args = args
 
-    def detect(self, image: np.ndarray, **kwargs) -> np.ndarray:
+    def __kwargs_to_string(self, *args, **kwargs) -> str:
+        """Convert keyword arguments to string for Tesseract command line
+        """
+
+        config: str = ''
+        for key, value in kwargs.items():
+            if len(key) > 1:     # e.g. --dpi 100
+                config += f'--{key} {value} '
+            elif len(key) == 1:  # e.g -l fas
+                config += f'-{key} {value} '
+            # args for CONFIGFILE
+            else:                
+                pass
+        for arg in args:         # e.g. hocr
+            config += f'{arg} '
+        return config
+
+    def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        """Detect text in an image using Google's Tesseract OCR engine
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to detect text in
+            kwargs: keyword arguments for ``tesseract`` CLI command.
+                Most important one are:
+
+                    - ``-l LANG``: language to use for OCR
+                    - ``--dpi N``: DPI to use for OCR
+                    - ``--oem N``: OCR engine mode
+                    - ``--psm N``: Page segmentation mode. Suggested values
+                        are 6 an 3. Defaults to 3.
+                    
+                An example:
+                    ``tesseract --oem 3 --psm 6 -l eng+fas --dpi 100 image.png output hocr pdf txt``           
+
+        Returns:
+            :class:`numpy.ndarray`: image with detected text
+        """
+        # pytesseract requires kwargs to be string as CLI command
+        config: str = ''
+        if kwargs is not None:
+            config = self.__kwargs_to_string(*args, **kwargs)
+        config = config.strip()
+        text = pytesseract.image_to_string(image, config=config)
+        return text
+
+    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
         """Detect text in an image using Google's Tesseract OCR engine
         
         Args:
@@ -364,24 +561,14 @@ class TesseractOCR(OCR):
         Returns:
             :class:`numpy.ndarray`: image with detected text
         """
-        # pytesseract requires kwargs to be string as CLI command
-        config: str = ''
-        if kwargs is not None:
-            for key, value in kwargs.items():
-                if len(key) > 1:     # e.g. --dpi 100
-                    config += f'--{key} {value} '
-                elif len(key) == 1:  # e.g -l fas
-                    config += f'-{key} {value} '
-                # args for CONFIGFILE
-                else:                # e.g. hocr
-                    config += f'{value} '
-        else:
-            config = '--dpi 100 -l eng+fas --oem 3 --psm 6'
-        config = config.strip()
-        text = pytesseract.image_to_string(image, config=config)
-        return text
-
-    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        # if kwargs provided, override class attributes
+        self.l = kwargs.get('l', self.l)
+        self.dpi = kwargs.get('dpi', self.dpi)
+        self.psm = kwargs.get('psm', self.psm)
+        self.oem = kwargs.get('oem', self.oem)
+        self.args = kwargs.get('args', self.args)
+        self._log(**self._get_class_attributes())
+        
         return self.detect(image, *args, **kwargs)
 
 

@@ -69,7 +69,7 @@ if __name__ == '__main__':
         __libs_logger.addHandler(stderr_stream_handler)
 
     # log experiment configs
-    MLFLOW_EXPERIMENT_NAME = f'FastAPI integration - {TTOCR_VERSION}'
+    MLFLOW_EXPERIMENT_NAME = f'Fix #1 - {TTOCR_VERSION}'
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     MLFLOW_TAGS = {
         'stage': 'dev'  # dev, beta, production
@@ -89,25 +89,37 @@ if __name__ == '__main__':
         copy_image = np.copy(img)
 
         # convert color to gray
-        color_converter = preprocessors.CV2ImageColorConverter()
-        gray_img = color_converter(image=img,
-                                   mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY)
+        color_converter = preprocessors.CV2ImageColorConverter(
+            mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY
+        )
+        gray_img = color_converter(image=img)
 
         # detect canny edges
-        canny_detector = detectors.CannyEdgeDetector()
-        canny_edges = canny_detector(image=gray_img, threshold1=50, threshold2=200)
+        canny_detector = detectors.CannyEdgeDetector(
+            threshold1=50,
+            threshold2=200,
+            aperture_size=3,
+            L2_gradient=False
+        )
+        canny_edges = canny_detector(image=gray_img)
 
         # detect lines
-        line_detector = detectors.ProbabilisticHoughLinesDetector()
-        lines = line_detector(image=canny_edges,
-                              rho=1,
-                              theta=np.pi / 180,
-                              threshold=100,
-                              minLineLength=350,
-                              maxLineGap=18)
+        line_detector = detectors.ProbabilisticHoughLinesDetector(
+            rho=1,
+            theta=np.pi / 180,
+            threshold=100,
+            min_line_length=350,
+            max_line_gap=18
+        )
+        lines = line_detector(image=canny_edges)
         
         # define ocr engine
-        ocr_engine = detectors.TesseractOCR()
+        ocr_engine = detectors.TesseractOCR(
+            l='eng+fas',
+            dpi=100,
+            psm=6,
+            oem=3,
+        )
         table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
         table_cell_ocr.vertical_lines = lines[0]
         table_cell_ocr.horizontal_lines = lines[1]
