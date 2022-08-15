@@ -1,5 +1,5 @@
 __all__ = [
-    'ImageColorConverter', 'CV2ImageColorConverterModes'
+    'ImageColorConverter', 'CV2ImageColorConverterModes', 'CV2ImageColorConverter'
 ]
 
 # core
@@ -7,7 +7,7 @@ from enum import Enum
 import numpy as np
 import cv2
 # helpers
-from typing import Any
+from typing import Any, Optional
 import logging
 
 
@@ -20,10 +20,11 @@ class ImageColorConverter:
 
     """
 
-    def __init__(self) -> None:
+    def __init__(self, mode: Any) -> None:
         self.logger = logging.getLogger(
             logger.name+'.'+self.__class__.__name__)
-        pass
+        
+        self.mode = mode
 
     def __validate_mode(self, mode: Any) -> None:
         """Verifies that ``mode`` exits
@@ -36,7 +37,7 @@ class ImageColorConverter:
     def __log(self):
         raise NotImplementedError
 
-    def __call__(self, image: np.ndarray, mode: Any,
+    def __call__(self, image: np.ndarray,
                  *args, **kwargs) -> np.ndarray:
         raise NotImplementedError
 
@@ -67,28 +68,46 @@ class CV2ImageColorConverterModes(Enum):
 
 class CV2ImageColorConverter(ImageColorConverter):
     """Convert image color space via ``OpenCV``
-
     """
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, mode: Optional[CV2ImageColorConverterModes] = None) -> None:
+        """Initialize ``CV2ImageColorConverter`` with given ``mode``
 
-    def __validate_mode(self, mode: CV2ImageColorConverterModes) -> None:
+        Args:
+            mode (CV2ImageColorConverterModes): color mode. For more info
+                see :class:`CV2ImageColorConverterModes`
+        """
+        super().__init__(mode)
+
+    def _validate_mode(self, mode: CV2ImageColorConverterModes) -> None:
         """Verifies that ``mode`` exits in ``cv2.COLOR_*``
 
         Args:
             mode (CV2ImageColorConverterModes): mode to verify
         """
+        if mode is None:
+            raise ValueError('mode is None. Please provide mode via init or call') 
 
         if mode not in CV2ImageColorConverterModes:
             raise ValueError(f'Invalid mode: {mode}')
 
-    def __log(self, mode: CV2ImageColorConverterModes) -> None:
+    def _log(self, mode: CV2ImageColorConverterModes) -> None:
         self.logger.info(f'Image is converted to {mode}')
 
     def __call__(self, image: np.ndarray,
-                 mode: CV2ImageColorConverterModes,
                  *args, **kwargs) -> np.ndarray:
-        self.__validate_mode(mode)
-        self.__log(mode)
-        return cv2.cvtColor(image, mode.value, *args, **kwargs)
+        """Convert image color space via ``OpenCV``
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to convert
+            mode (CV2ImageColorConverterModes): color mode. For more info
+                see :class:`CV2ImageColorConverterModes`
+            *args: additional arguments for ``cv2.cvtColor``
+            **kwargs: additional keyword arguments for ``cv2.cvtColor``
+        """
+        # if kwargs provided, override class attributes
+        self.mode = kwargs.get('mode', self.mode)
+
+        self._validate_mode(self.mode)
+        self._log(self.mode)
+        return cv2.cvtColor(image, self.mode.value, *args, **kwargs)
