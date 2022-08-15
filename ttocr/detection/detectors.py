@@ -11,7 +11,7 @@ import pytesseract
 import numpy as np
 import cv2
 # helpers
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 from pathlib import Path
 from enum import Enum
@@ -140,6 +140,7 @@ class LineDetector(Detector):
         super().__init__()
         self.__horizontal_lines: List[np.ndarray] = []
         self.__vertical_lines: List[np.ndarray] = []
+        self._image_shape: Optional[Tuple[int, int]] = None
 
     def _log(self, *args, **kwargs):
         self.logger.info(
@@ -245,7 +246,35 @@ class LineDetector(Detector):
                 filtered_lines.append(current_line)
                     
         return filtered_lines
-    
+
+    def _get_border_lines(self, 
+        shape: Tuple[int, ...]
+    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        """Get lines that form the borders of an image
+
+        Notes:
+            This is in case where the detector algorithm does not detect edge
+            lines that construct borders of an image. This is a common case when 
+            there is not enough border; although we can solve this by adding border, 
+            but if are going to add some code to add border, then why not manually give
+            the lines that construct the borders?
+
+        Args:
+            shape (Tuple[int, ...]): shape (of image) to get border lines from
+        
+        Returns:
+            :class:`numpy.ndarray`:
+            A tuple of two lists of lines. The first list contains
+                vertical lines and the second list contains horizontal lines.
+        """
+        left_border = np.array([2, 2, 2, shape[0]], dtype=np.int32)
+        right_border = np.array([shape[1], 2, shape[1], shape[0]], dtype=np.int32)
+        top_border = np.array([2, 2, shape[1], 2], dtype=np.int32)
+        bottom_border = np.array([2, shape[0], shape[1], shape[0]], dtype=np.int32)
+        vertical_lines = [left_border, right_border]
+        horizontal_lines = [top_border, bottom_border]
+        return vertical_lines, horizontal_lines
+
     def get_vertical_horizontal_lines(self,
             lines: List[np.ndarray]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Assigns lines to either direction of vertical or horizontal
@@ -271,6 +300,11 @@ class LineDetector(Detector):
                 vertical_lines.append(line)
             elif direction == LineDirection.HORIZONTAL:
                 horizontal_lines.append(line)
+
+        # add manually added borders
+        vl_, hl_ = self._get_border_lines(self._image_shape)
+        vertical_lines.extend(vl_)
+        horizontal_lines.extend(hl_)
         # remove overlapping lines
         vertical_lines = self._filter_overlapping_lines(lines=vertical_lines,
                                                         sorting_index=0)
@@ -335,6 +369,7 @@ class ProbabilisticHoughLinesDetector(LineDetector):
         return cv2.HoughLinesP(image, *args, **kwargs)
     
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        self._image_shape = image.shape
         # if kwargs provided, override class attributes
         self.rho = kwargs.get('rho', self.rho)
         self.theta = kwargs.get('theta', self.theta)
@@ -421,6 +456,7 @@ class NaiveHoughLinesDetector(LineDetector):
         return cv2.HoughLinesP(image, *args, **kwargs)
     
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        self._image_shape = image.shape
         # if kwargs provided, override class attributes
         self.rho = kwargs.get('rho', self.rho)
         self.theta = kwargs.get('theta', self.theta)
@@ -605,13 +641,21 @@ class TableCellDetector(LineDetector):
     def _num_rows(self) -> int:
         """Number of rows in table
         """
-        return len(self.horizontal_lines) - 1
+        nr = len(self.horizontal_lines) - 1
+        # log warning if number of rows is zero
+        if nr == 0:
+            self.logger.warning('Number of rows is zero!')
+        return nr
     
     @property
     def _num_columns(self) -> int:
         """Number of columns in table
         """
-        return len(self.vertical_lines) - 1
+        nc = len(self.vertical_lines) - 1
+        # log warning if number of columns is zero
+        if nc == 0:
+            self.logger.warning('Number of columns is zero!')
+        return nc
 
     def _log(self):
         self.logger.info('Using TableCellDetector')
@@ -679,7 +723,6 @@ class TableCellDetector(LineDetector):
         # cropped ROI
         roi = self._crop_image(image, x1, y1, w, h)
         return roi, (x1, y1, w, h)
-
 
     def __call__(self, image: np.ndarray,
                  plot: Union[Path, str, None] = None,
