@@ -103,18 +103,20 @@ class CannyEdgeDetector(EdgeDetector):
         """
         return cv2.Canny(image, *args, **kwargs)
     
-    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+    def __call__(self, image: np.ndarray,
+                 plot: Optional[Path] = None,
+                 *args, **kwargs) -> np.ndarray:
         # if kwargs provided, override class init
         self.threshold1 = kwargs.get('threshold1', self.threshold1)
         self.threshold2 = kwargs.get('threshold2', self.threshold2)
         self.aperture_size = kwargs.get('aperture_size', self.aperture_size)
         self.L2_gradient = kwargs.get('L2_gradient', self.L2_gradient)
 
-        self._log(**self._get_class_attributes())
-        return self.detect(image,
-                           threshold1=self.threshold1,
-                           threshold2=self.threshold2,
-                           apertureSize=self.aperture_size,
+        edges = self.detect(
+            image,
+            threshold1=self.threshold1,
+            threshold2=self.threshold2,
+            apertureSize=self.aperture_size,
             L2gradient=self.L2_gradient
         )
 

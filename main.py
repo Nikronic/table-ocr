@@ -69,7 +69,7 @@ if __name__ == '__main__':
         __libs_logger.addHandler(stderr_stream_handler)
 
     # log experiment configs
-    MLFLOW_EXPERIMENT_NAME = f'Fix #1 - {TTOCR_VERSION}'
+    MLFLOW_EXPERIMENT_NAME = f'Single column table - {TTOCR_VERSION}'
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     MLFLOW_TAGS = {
         'stage': 'dev'  # dev, beta, production
@@ -81,7 +81,7 @@ if __name__ == '__main__':
 
     try:
         # read image
-        filename = 'sample/orig/01-table.png'
+        filename = 'sample/orig/05-col-wo-border.png'
         img_reader = io.CV2ImageReader()
         img = img_reader(filename)
 
@@ -101,7 +101,8 @@ if __name__ == '__main__':
             aperture_size=3,
             L2_gradient=False
         )
-        canny_edges = canny_detector(image=gray_img)
+        canny_edges = canny_detector(image=gray_img,
+                                     plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
         # detect lines
         line_detector = detectors.ProbabilisticHoughLinesDetector(
