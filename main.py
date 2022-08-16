@@ -4,6 +4,7 @@ import numpy as np
 from ttocr.data import io
 from ttocr.data import preprocessors
 # ours: detection
+from ttocr.detection import DetectionMode
 from ttocr.detection import detectors
 # ours: utils
 from ttocr.version import VERSION as TTOCR_VERSION
@@ -80,6 +81,10 @@ if __name__ == '__main__':
     logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
 
     try:
+        # choose table detection method
+        DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
+        logger.info(f'Detection mode: {DETECTION_MODE}')
+
         # read image
         filename = 'sample/orig/05-col-wo-border.png'
         img_reader = io.CV2ImageReader()
@@ -94,38 +99,43 @@ if __name__ == '__main__':
         )
         gray_img = color_converter(image=img)
 
-        # detect canny edges
-        canny_detector = detectors.CannyEdgeDetector(
-            threshold1=50,
-            threshold2=200,
-            aperture_size=3,
-            L2_gradient=False
-        )
-        canny_edges = canny_detector(image=gray_img,
-                                     plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+        if DETECTION_MODE == DetectionMode.ML_FULL_TABLE:
+            # detect canny edges
+            canny_detector = detectors.CannyEdgeDetector(
+                threshold1=50,
+                threshold2=200,
+                aperture_size=3,
+                L2_gradient=False
+            )
+            canny_edges = canny_detector(image=gray_img,
+                                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
-        # detect lines
-        line_detector = detectors.ProbabilisticHoughLinesDetector(
-            rho=1,
-            theta=np.pi / 180,
-            threshold=100,
-            min_line_length=350,
-            max_line_gap=18
-        )
-        lines = line_detector(image=canny_edges)
+            # detect lines
+            line_detector = detectors.ProbabilisticHoughLinesDetector(
+                rho=1,
+                theta=np.pi / 180,
+                threshold=100,
+                min_line_length=350,
+                max_line_gap=18
+            )
+            lines = line_detector(image=canny_edges)
+            
+            # define ocr engine
+            ocr_engine = detectors.TesseractOCR(
+                l='eng+fas',
+                dpi=100,
+                psm=7,
+                oem=1,
+            )
+            table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
+            table_cell_ocr.vertical_lines = lines[0]
+            table_cell_ocr.horizontal_lines = lines[1]
+            table_cell_ocr(image=gray_img,
+                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
         
-        # define ocr engine
-        ocr_engine = detectors.TesseractOCR(
-            l='eng+fas',
-            dpi=100,
-            psm=6,
-            oem=3,
-        )
-        table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
-        table_cell_ocr.vertical_lines = lines[0]
-        table_cell_ocr.horizontal_lines = lines[1]
-        table_cell_ocr(image=gray_img,
-                       plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+        elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
+            # TODO: implement single column table detection
+            pass
 
     except Exception as e:
         logger.exception(e)
