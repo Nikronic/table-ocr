@@ -115,7 +115,18 @@ class CannyEdgeDetector(EdgeDetector):
                            threshold1=self.threshold1,
                            threshold2=self.threshold2,
                            apertureSize=self.aperture_size,
-                           L2gradient=self.L2_gradient)
+            L2gradient=self.L2_gradient
+        )
+
+        # logging
+        self._log(**self._get_class_attributes())
+        if plot is not None:
+            fig = plt.figure(figsize=(12, 12))
+            plt.imshow(edges, cmap='gray')
+            plt.savefig(plot / 'canny_edge.png')
+            plt.close(fig)
+        
+        return edges
 
 
 class LineDirection(Enum):
@@ -548,11 +559,12 @@ class TesseractOCR(OCR):
             config += f'{arg} '
         return config
 
-    def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+    def detect(self, image: np.ndarray, config: str, *args, **kwargs) -> np.ndarray:
         """Detect text in an image using Google's Tesseract OCR engine
         
         Args:
             image (:class:`numpy.ndarray`): image to detect text in
+            config (str): configuration string for Tesseract
             kwargs: keyword arguments for ``tesseract`` CLI command.
                 Most important one are:
 
@@ -569,9 +581,13 @@ class TesseractOCR(OCR):
             :class:`numpy.ndarray`: image with detected text
         """
         # pytesseract requires kwargs to be string as CLI command
-        config: str = ''
+        config = self.config
+        config_: str = ''
         if kwargs is not None:
-            config = self.__kwargs_to_string(*args, **kwargs)
+            config_ = self.__kwargs_to_string(*args, **kwargs)
+            config_ = config_.strip()
+        # append to self.config
+        config = config + config_
         config = config.strip()
         text = pytesseract.image_to_string(image, config=config)
         return text
@@ -604,8 +620,16 @@ class TesseractOCR(OCR):
         self.oem = kwargs.get('oem', self.oem)
         self.args = kwargs.get('args', self.args)
         self._log(**self._get_class_attributes())
+
+        self.config = self.__kwargs_to_string(
+            l=self.l,
+            dpi=self.dpi,
+            psm=self.psm,
+            oem=self.oem,
+            *self.args
+        )
         
-        return self.detect(image, *args, **kwargs)
+        return self.detect(image, self.config, *args, **kwargs)
 
 
 class TableCellDetector(LineDetector):
