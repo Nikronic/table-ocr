@@ -7,8 +7,11 @@ from enum import EnumMeta
 from enum import Enum
 
 class OnAccess(EnumMeta):
-    """
-    runs a user-specified function whenever member is accessed
+    """Runs a user-specified function whenever member is accessed
+
+    Reference:
+        * https://stackoverflow.com/a/62309159/18971263
+
     """
     #
     def __getattribute__(cls, name):
@@ -44,6 +47,9 @@ class ExtendedEnum(Enum, metaclass=OnAccess):
         MyEnum.B  # runs user defined function
         MyEnum.C  # runs as normal
     
+    Reference:
+        * https://stackoverflow.com/a/62309159/18971263
+
     """
     def __new__(cls, value, *args):
         member = object.__new__(cls)
