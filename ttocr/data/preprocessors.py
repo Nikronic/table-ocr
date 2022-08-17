@@ -420,7 +420,7 @@ class OtsuThresholder(ImageThresholder):
             *args: additional arguments for thresholder
             **kwargs: additional keyword arguments for thresholder
         """
-        return cv2.threshold(image, *args, **kwargs)
+        return cv2.threshold(image, *args, **kwargs)[1]
     
     def __call__(self, image: np.ndarray,
                  plot: Optional[Path] = None,
