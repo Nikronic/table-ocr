@@ -82,11 +82,11 @@ if __name__ == '__main__':
 
     try:
         # choose table detection method
-        DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
+        DETECTION_MODE = DetectionMode.ML_FULL_TABLE
         logger.info(f'Detection mode: {DETECTION_MODE}')
 
         # read image
-        filename = 'sample/orig/05-col-wo-border.png'
+        filename = 'sample/orig/03-col-with-border.png'
         img_reader = io.CV2ImageReader()
         img = img_reader(filename)
 
@@ -115,16 +115,16 @@ if __name__ == '__main__':
                 rho=1,
                 theta=np.pi / 180,
                 threshold=100,
-                min_line_length=350,
-                max_line_gap=18
+                min_line_length=50,
+                max_line_gap=10
             )
             lines = line_detector(image=canny_edges)
             
             # define ocr engine
             ocr_engine = detectors.TesseractOCR(
                 l='eng+fas',
-                dpi=100,
-                psm=7,
+                dpi=150,
+                psm=12,
                 oem=1,
             )
             table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
