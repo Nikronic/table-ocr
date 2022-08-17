@@ -7,7 +7,7 @@ from enum import Enum
 import numpy as np
 import cv2
 # helpers
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 import logging
 
 
@@ -111,3 +111,107 @@ class CV2ImageColorConverter(ImageColorConverter):
         self._validate_mode(self.mode)
         self._log(self.mode)
         return cv2.cvtColor(image, self.mode.value, *args, **kwargs)
+
+
+class ImageSmoother:
+    """Abstract class for implementing different smoothing methods
+    """
+
+    def __init__(self, kernel_size: Optional[int] = None) -> None:
+        """Initialize ``ImageSmoother`` with given ``kernel_size``
+        
+        Args:
+            kernel_size (int): kernel size for smoothing
+        """
+        self.logger = logging.getLogger(
+            logger.name+'.'+self.__class__.__name__)
+        self.kernel_size = kernel_size
+    
+    def _get_class_attributes(self) -> dict:
+        return dict(self.__dict__)
+    
+    def _log(self, *args, **kwargs):
+        self.logger.info(
+            f'{self.__class__.__name__} image smoothing is performed'
+            f' with kwargs: {kwargs}'
+        )
+
+    def smooth(self, image: np.ndarray,
+               *args, **kwargs) -> np.ndarray:
+        """Smooth image via given method
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to smooth
+            *args: additional arguments for smoother
+            **kwargs: additional keyword arguments for smoother
+        """
+        raise NotImplementedError
+
+    def __call__(self, image: np.ndarray,
+                 *args, **kwargs) -> np.ndarray:
+        raise NotImplementedError
+
+
+class CV2BorderTypes(Enum):
+    """Enum for border types in ``cv2.BORDER_*``
+
+    Notes:
+        For more information, see https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#ga209f2f4869e304c82d07739337eae7c5
+    """
+    CONSTANT = cv2.BORDER_CONSTANT
+    REPLICATE = cv2.BORDER_REPLICATE
+    REFLECT = cv2.BORDER_REFLECT
+    REFLECT_101 = cv2.BORDER_REFLECT_101
+    WRAP = cv2.BORDER_WRAP
+    TRANSPARENT = cv2.BORDER_TRANSPARENT
+    ISOLATED = cv2.BORDER_ISOLATED
+    DEFAULT = cv2.BORDER_DEFAULT
+
+
+class GaussianImageSmoother(ImageSmoother):
+    """Blurs an image via Open CVs cv2.GaussianBlur_
+
+    Notes:
+        For more info about the algorithm see https://docs.opencv.org/4.6.0/d4/d13/tutorial_py_filtering.html
+
+    .. _cv2.GaussianBlur: * https://docs.opencv.org/4.6.0/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
+    """
+
+    def __init__(self,
+                 kernel_size: Optional[int] = None,
+                 border_type: Optional[CV2BorderTypes] = 0) -> None:
+        """Initialize ``GaussianImageSmoother`` with given ``kernel_size``
+        
+        Args:
+            kernel_size (int): kernel size for smoothing
+        """
+        super().__init__(kernel_size)
+        self.border_type = border_type
+
+    def smooth(self, image: np.ndarray,
+               *args, **kwargs) -> np.ndarray:
+        """Smooth image via given method
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to smooth
+            *args: additional arguments for smoother
+            **kwargs: additional keyword arguments for smoother
+        """
+        return cv2.GaussianBlur(image, *args, **kwargs)
+
+    def __call__(self, image: np.ndarray,
+                 *args, **kwargs) -> np.ndarray:
+        # if kwargs provided, override class attributes
+        self.border_type = kwargs.get('border_type', self.border_type)
+        self.kernel_size = kwargs.get('kernel_size', self.kernel_size)
+
+        # logging
+        self._log(self._get_class_attributes())
+
+        smoothed = self.smooth(
+            image=image,
+            kernel_size=self.kernel_size,
+            border_type=self.border_type
+        )
+        
+        return smoothed
