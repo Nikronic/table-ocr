@@ -8,10 +8,11 @@ __all__ = [
 ]
 
 # core
+from optparse import Option
 import numpy as np
 import cv2
 # helpers
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 import matplotlib.pyplot as plt
 from pathlib import Path
 from enum import Enum
@@ -449,3 +450,103 @@ class OtsuThresholder(ImageThresholder):
             plt.close(fig)
         
         return thresholded
+
+
+class MorphologicalOperator:
+    """Abstract class for implementing different morphological operations
+    """
+
+    def __init__(self) -> None:
+        """Initialize ``MorphologicalOperator``
+        """
+        self.logger = logging.getLogger(
+            logger.name+'.'+self.__class__.__name__)
+
+    def _get_class_attributes(self) -> dict:
+        return dict(self.__dict__)
+    
+    def _log(self, *args, **kwargs):
+        self.logger.info(
+            f'{self.__class__.__name__} morphological operator is performed'
+            f' with kwargs: {kwargs}'
+        )
+
+    def morph(self, image: np.ndarray,
+              *args, **kwargs) -> np.ndarray:
+        """Morph image via given method
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to morph
+            *args: additional arguments for morphological operator
+            **kwargs: additional keyword arguments for morphological operator
+        """
+        raise NotImplementedError
+
+    def __call__(self, image: np.ndarray,
+                 *args, **kwargs) -> np.ndarray:
+        raise NotImplementedError
+
+
+class Dilate(MorphologicalOperator):
+    """Dilates an image using cv2.dilate_
+
+    Notes:
+        For more info about the algorithm, see https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#ga8f8b8b8b8f8b8b8b8b8b8b8b8b8b8b8
+
+    .. _cv2.dilate: https://docs.opencv.org/4.6.0/d4/d86/group__imgproc__filter.html#ga4ff0f3318642c4f469d0e11f242f3b6c
+    """
+    def __init__(self,
+                 morph_size: Optional[int] = None,
+                 iterations: Optional[int] = None
+                ) -> None:
+        """Initialize ``Dilate``
+
+        Args:
+            morph_size (int): morphological struct size. This size used in 
+                ``cv2.getStructuringElement`` to generate structuring element
+            iterations (int): number of times to repeat the dilation operation
+        """
+        super().__init__()
+
+        self.morph_size = morph_size
+        self.iterations = iterations
+    
+    def morph(self, image: np.ndarray,
+              *args, **kwargs) -> np.ndarray:
+        """Morph image via given method
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to morph
+            *args: additional arguments for ``cv2.dilate``
+            **kwargs: additional keyword arguments for ``cv2.dilate``
+        """
+        dilated = image.copy()
+        dilated = cv2.dilate(~dilated, *args, **kwargs)
+        dilated = ~dilated
+        return dilated
+    
+    def __call__(self, image: np.ndarray,
+                 plot: Optional[Path] = None,
+                 *args, **kwargs) -> np.ndarray:
+            # if kwargs provided, override class attributes
+            self.morph_size = kwargs.get('morph_size', self.morph_size)
+            self.iterations = kwargs.get('iterations', self.iterations)
+            
+            morphed = self.morph(
+                image=image,
+                kernel=cv2.getStructuringElement(
+                    cv2.MORPH_RECT,
+                    (self.morph_size, self.morph_size)
+                ),
+                iterations=self.iterations
+            )
+    
+            # logging
+            self._log(**self._get_class_attributes())
+            if plot is not None:
+                fig = plt.figure(figsize=(12, 12))
+                plt.imshow(morphed, cmap='gray')
+                plt.savefig(plot / 'dilate.png')
+                plt.close(fig)
+            
+            return morphed

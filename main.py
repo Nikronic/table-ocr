@@ -149,6 +149,15 @@ if __name__ == '__main__':
             img = adaptive_thresh(image=img, block_size=11, constant=5,
                                   plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
+            # make text blocks as solid blocks
+            dilater = preprocessors.Dilate(
+                morph_size=3,
+            )
+            img = dilater(image=img, iterations=3,
+                          plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            
+
+
     except Exception as e:
         logger.exception(e)
         raise e
