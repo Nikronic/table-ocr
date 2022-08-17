@@ -82,7 +82,7 @@ if __name__ == '__main__':
 
     try:
         # choose table detection method
-        DETECTION_MODE = DetectionMode.ML_FULL_TABLE
+        DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
         logger.info(f'Detection mode: {DETECTION_MODE}')
 
         # read image
@@ -97,7 +97,7 @@ if __name__ == '__main__':
         color_converter = preprocessors.CV2ImageColorConverter(
             mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY
         )
-        gray_img = color_converter(image=img)
+        img = color_converter(image=img)
 
         if DETECTION_MODE == DetectionMode.ML_FULL_TABLE:
             # detect canny edges
@@ -107,7 +107,7 @@ if __name__ == '__main__':
                 aperture_size=3,
                 L2_gradient=False
             )
-            canny_edges = canny_detector(image=gray_img,
+            canny_edges = canny_detector(image=img,
                                         plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
             # detect lines
@@ -130,12 +130,18 @@ if __name__ == '__main__':
             table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
             table_cell_ocr.vertical_lines = lines[0]
             table_cell_ocr.horizontal_lines = lines[1]
-            table_cell_ocr(image=gray_img,
+            table_cell_ocr(image=img,
                         plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
         
         elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
-            # TODO: implement single column table detection
-            pass
+            # smooth image
+            gaussian_blur = preprocessors.GaussianImageSmoother(
+                border_type=preprocessors.CV2BorderTypes.DEFAULT
+            )
+            img = gaussian_blur(image=img, kernel_size=3)
+
+            
+
 
     except Exception as e:
         logger.exception(e)

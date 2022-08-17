@@ -180,11 +180,12 @@ class GaussianImageSmoother(ImageSmoother):
 
     def __init__(self,
                  kernel_size: Optional[int] = None,
-                 border_type: Optional[CV2BorderTypes] = 0) -> None:
+                 border_type: CV2BorderTypes = CV2BorderTypes.DEFAULT) -> None:
         """Initialize ``GaussianImageSmoother`` with given ``kernel_size``
         
         Args:
             kernel_size (int): kernel size for smoothing
+            border_type (CV2BorderTypes): border type for smoothing (kernel operation)
         """
         super().__init__(kernel_size)
         self.border_type = border_type
@@ -207,12 +208,13 @@ class GaussianImageSmoother(ImageSmoother):
         self.kernel_size = kwargs.get('kernel_size', self.kernel_size)
 
         # logging
-        self._log(self._get_class_attributes())
+        self._log(**self._get_class_attributes())
 
         smoothed = self.smooth(
             image=image,
-            kernel_size=self.kernel_size,
-            border_type=self.border_type
+            ksize=(self.kernel_size, self.kernel_size),
+            sigmaX=0,  # lets compute sigma based on kernel size (ie = 0)
+            borderType = self.border_type.value
         )
         
         return smoothed
