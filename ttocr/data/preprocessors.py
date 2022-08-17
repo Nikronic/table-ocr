@@ -1,5 +1,6 @@
 __all__ = [
-    'ImageColorConverter', 'CV2ImageColorConverterModes', 'CV2ImageColorConverter'
+    'ImageColorConverter', 'CV2ImageColorConverterModes', 'CV2ImageColorConverter',
+    'ImageSmoother', 'GaussianImageSmoother', 'CV2BorderTypes'
 ]
 
 # core
@@ -7,7 +8,7 @@ from enum import Enum
 import numpy as np
 import cv2
 # helpers
-from typing import Any, Optional, Tuple
+from typing import Any, Optional
 import logging
 
 
