@@ -70,7 +70,7 @@ if __name__ == '__main__':
         __libs_logger.addHandler(stderr_stream_handler)
 
     # log experiment configs
-    MLFLOW_EXPERIMENT_NAME = f'Single column table - {TTOCR_VERSION}'
+    MLFLOW_EXPERIMENT_NAME = f'Morphology - Sole column - {TTOCR_VERSION}'
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     MLFLOW_TAGS = {
         'stage': 'dev'  # dev, beta, production
@@ -140,8 +140,14 @@ if __name__ == '__main__':
             )
             img = gaussian_blur(image=img, kernel_size=3)
 
-            
-
+            # binarize image
+            adaptive_thresh = preprocessors.GaussianAdaptiveThresholder(
+                max_value=255,
+                adaptive_method=preprocessors.CV2AdaptiveThresholdTypes.GAUSSIAN_C,
+                threshold_type=preprocessors.CV2ThresholdTypes.BINARY,
+            )
+            img = adaptive_thresh(image=img, block_size=11, constant=5,
+                                  plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
     except Exception as e:
         logger.exception(e)
