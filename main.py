@@ -138,7 +138,7 @@ if __name__ == '__main__':
             gaussian_blur = preprocessors.GaussianImageSmoother(
                 border_type=preprocessors.CV2BorderTypes.DEFAULT
             )
-            img = gaussian_blur(image=img, kernel_size=3)
+            pre_img = gaussian_blur(image=img, kernel_size=3)
 
             # binarize image
             adaptive_thresh = preprocessors.GaussianAdaptiveThresholder(
@@ -146,14 +146,14 @@ if __name__ == '__main__':
                 adaptive_method=preprocessors.CV2AdaptiveThresholdTypes.GAUSSIAN_C,
                 threshold_type=preprocessors.CV2ThresholdTypes.BINARY,
             )
-            img = adaptive_thresh(image=img, block_size=11, constant=5,
+            pre_img = adaptive_thresh(image=pre_img, block_size=11, constant=5,
                                   plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
             # make text blocks as solid blocks
             dilater = preprocessors.Dilate(
                 morph_size=3,
             )
-            img = dilater(image=img, iterations=3,
+            dilated_img = dilater(image=pre_img, iterations=3,
                           plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
             
             # detect lines of table and cells
@@ -162,11 +162,25 @@ if __name__ == '__main__':
                 min_columns=1,
             )
             vertical_lines, horizontal_lines = contour_line_detector(
-                image=img,
+                image=dilated_img,
                 min_solid_height_limit=6,
                 max_solid_height_limit=40,
                 plot=MLFLOW_ARTIFACTS_IMAGES_PATH
             )
+
+            # define ocr engine
+            ocr_engine = detectors.TesseractOCR(
+                l='eng',
+                dpi=100,
+                psm=11,
+                oem=1,
+            )
+            table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
+            table_cell_ocr.vertical_lines = vertical_lines
+            table_cell_ocr.horizontal_lines = horizontal_lines
+            table_cell_ocr(image=pre_img,
+                           roi_offset=0,
+                           plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
     except Exception as e:
         logger.exception(e)

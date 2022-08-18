@@ -615,8 +615,9 @@ class ContourLinesDetector(LineDetector):
 
         return table_cells
 
-    @staticmethod
-    def _build_lines(table_cells: Optional[List[List[np.ndarray]]]) -> Tuple[List, List]:
+    def _build_lines(self, 
+                    table_cells: Optional[List[List[np.ndarray]]]
+                    ) -> Tuple[List, List]:
         """Build horizontal and vertical lines out of given table cells
 
         Args:
@@ -656,6 +657,11 @@ class ContourLinesDetector(LineDetector):
         (x, y, w, h) = table_cells[0][0]
         hor_lines.append((min_x, max_y, max_x, max_y))
 
+        # remove overlapping lines
+        ver_lines = self._filter_overlapping_lines(lines=ver_lines,
+                                                   sorting_index=0)
+        hor_lines = self._filter_overlapping_lines(lines=hor_lines,
+                                                   sorting_index=1)
         return ver_lines, hor_lines
 
     def __call__(self, image: np.ndarray,
@@ -854,17 +860,22 @@ class TableCellDetector(LineDetector):
 
     """
 
-    def __init__(self, ocr: OCR = TesseractOCR) -> None:
+    def __init__(self,
+                 ocr: Optional[OCR] = None,
+                 roi_offset: Optional[int] = None) -> None:
         """
 
         Args:
             ocr (OCR): OCR instance to use for text detection. Has
                 to be an instance of :class:`OCR`. E.g. see :class:`TesseractOCR`.
                 Defaults to :class:`TesseractOCR`.
+            roi_offset (int, optional): offset of the ROI. If :class:`ContourLinesDetector`
+                is used for line detection, recommended to be ``0``, otherwise, ``4``.
         """
         super().__init__()
 
         self.__ocr = ocr
+        self.roi_offset = roi_offset
         self.__ocred_cells: np.ndarray = None
     
     @property
@@ -975,6 +986,8 @@ class TableCellDetector(LineDetector):
                 Note that this is for debugging purposes only hence hidden from class definition.
 
         """
+        # if kwargs provided, override class attributes
+        self.roi_offset = kwargs.get('roi_offset', self.roi_offset)
         self._log()
 
         # all detected cells
@@ -1002,8 +1015,13 @@ class TableCellDetector(LineDetector):
                     vertical_lines=self.vertical_lines,
                     row_index=i,
                     col_index=j,
-                    offset=4,
+                    offset=self.roi_offset,
                 )
+
+                # skip if ROI is empty
+                if roi.shape[0] == 0 or roi.shape[1] == 0:
+                    self.logger.warning(f'ROI is empty at {i}, {j}, skipped.')
+                    continue
 
                 # detect text via OCR
                 text = self.__ocr(roi)
