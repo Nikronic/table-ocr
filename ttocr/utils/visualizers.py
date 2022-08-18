@@ -3,10 +3,11 @@ __all__ = [
 ]
 
 # core
-from typing import List, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+# helpers
+from typing import List, Optional, Tuple
 
 
 def draw_lines(image: np.ndarray,
@@ -43,11 +44,11 @@ def draw_lines(image: np.ndarray,
         image = np.copy(image)
 
     for i, line in enumerate(lines):
-        for x1, y1, x2, y2 in line:
-            cv2.line(image, (x1, y1), (x2, y2), color, thickness)
-            if name is not None:
-                cv2.putText(image, str(i) + name,
-                            (line[0] + 5, line[1]),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.5, (0, 0, 0), 1, cv2.LINE_AA)
+        x1, y1, x2, y2 = line
+        cv2.line(image, (x1, y1), (x2, y2), color, thickness)
+        if name is not None:
+            cv2.putText(image, str(i) + name,
+                        (line[0] + 5, line[1]),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5, (0, 0, 0), 1, cv2.LINE_AA)
     return image

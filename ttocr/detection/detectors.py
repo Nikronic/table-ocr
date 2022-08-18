@@ -3,15 +3,17 @@ __all__ = [
     'Detector', 'EdgeDetector', 'LineDetector', 'OCR',
     # concrete classes
     'CannyEdgeDetector', 'ProbabilisticHoughLinesDetector', 'NaiveHoughLinesDetector',
-    'TesseractOCR', 'TableCellDetector'
+    'TesseractOCR', 'TableCellDetector', 'ContourLinesDetector'
 ]
 
 # core
 import pytesseract
 import numpy as np
 import cv2
+# ours: helpers
+from ttocr.utils import visualizers
 # helpers
-from typing import List, Tuple, Union
+from typing import List, Optional, Tuple, Union
 import matplotlib.pyplot as plt
 from pathlib import Path
 from enum import Enum
@@ -103,19 +105,32 @@ class CannyEdgeDetector(EdgeDetector):
         """
         return cv2.Canny(image, *args, **kwargs)
     
-    def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+    def __call__(self, image: np.ndarray,
+                 plot: Optional[Path] = None,
+                 *args, **kwargs) -> np.ndarray:
         # if kwargs provided, override class init
         self.threshold1 = kwargs.get('threshold1', self.threshold1)
         self.threshold2 = kwargs.get('threshold2', self.threshold2)
         self.aperture_size = kwargs.get('aperture_size', self.aperture_size)
         self.L2_gradient = kwargs.get('L2_gradient', self.L2_gradient)
 
+        edges = self.detect(
+            image,
+            threshold1=self.threshold1,
+            threshold2=self.threshold2,
+            apertureSize=self.aperture_size,
+            L2gradient=self.L2_gradient
+        )
+
+        # logging
         self._log(**self._get_class_attributes())
-        return self.detect(image,
-                           threshold1=self.threshold1,
-                           threshold2=self.threshold2,
-                           apertureSize=self.aperture_size,
-                           L2gradient=self.L2_gradient)
+        if plot is not None:
+            fig = plt.figure(figsize=(12, 12))
+            plt.imshow(edges, cmap='gray')
+            plt.savefig(plot / 'canny_edge.png')
+            plt.close(fig)
+        
+        return edges
 
 
 class LineDirection(Enum):
@@ -140,6 +155,7 @@ class LineDetector(Detector):
         super().__init__()
         self.__horizontal_lines: List[np.ndarray] = []
         self.__vertical_lines: List[np.ndarray] = []
+        self._image_shape: Optional[Tuple[int, int]] = None
 
     def _log(self, *args, **kwargs):
         self.logger.info(
@@ -245,7 +261,35 @@ class LineDetector(Detector):
                 filtered_lines.append(current_line)
                     
         return filtered_lines
-    
+
+    def _get_border_lines(self, 
+        shape: Tuple[int, ...]
+    ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+        """Get lines that form the borders of an image
+
+        Notes:
+            This is in case where the detector algorithm does not detect edge
+            lines that construct borders of an image. This is a common case when 
+            there is not enough border; although we can solve this by adding border, 
+            but if are going to add some code to add border, then why not manually give
+            the lines that construct the borders?
+
+        Args:
+            shape (Tuple[int, ...]): shape (of image) to get border lines from
+        
+        Returns:
+            :class:`numpy.ndarray`:
+            A tuple of two lists of lines. The first list contains
+                vertical lines and the second list contains horizontal lines.
+        """
+        left_border = np.array([2, 2, 2, shape[0]], dtype=np.int32)
+        right_border = np.array([shape[1], 2, shape[1], shape[0]], dtype=np.int32)
+        top_border = np.array([2, 2, shape[1], 2], dtype=np.int32)
+        bottom_border = np.array([2, shape[0], shape[1], shape[0]], dtype=np.int32)
+        vertical_lines = [left_border, right_border]
+        horizontal_lines = [top_border, bottom_border]
+        return vertical_lines, horizontal_lines
+
     def get_vertical_horizontal_lines(self,
             lines: List[np.ndarray]) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Assigns lines to either direction of vertical or horizontal
@@ -271,6 +315,11 @@ class LineDetector(Detector):
                 vertical_lines.append(line)
             elif direction == LineDirection.HORIZONTAL:
                 horizontal_lines.append(line)
+
+        # add manually added borders
+        vl_, hl_ = self._get_border_lines(self._image_shape)
+        vertical_lines.extend(vl_)
+        horizontal_lines.extend(hl_)
         # remove overlapping lines
         vertical_lines = self._filter_overlapping_lines(lines=vertical_lines,
                                                         sorting_index=0)
@@ -335,6 +384,7 @@ class ProbabilisticHoughLinesDetector(LineDetector):
         return cv2.HoughLinesP(image, *args, **kwargs)
     
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        self._image_shape = image.shape
         # if kwargs provided, override class attributes
         self.rho = kwargs.get('rho', self.rho)
         self.theta = kwargs.get('theta', self.theta)
@@ -421,6 +471,7 @@ class NaiveHoughLinesDetector(LineDetector):
         return cv2.HoughLinesP(image, *args, **kwargs)
     
     def __call__(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+        self._image_shape = image.shape
         # if kwargs provided, override class attributes
         self.rho = kwargs.get('rho', self.rho)
         self.theta = kwargs.get('theta', self.theta)
@@ -444,6 +495,214 @@ class NaiveHoughLinesDetector(LineDetector):
                             max_theta=self.max_theta)
         # separate lines into vertical and horizontal
         vertical_lines, horizontal_lines = self.get_vertical_horizontal_lines(lines)
+        return vertical_lines, horizontal_lines
+
+
+class ContourLinesDetector(LineDetector):
+    """Detects lines via finding contours around solid areas
+
+    For finding contours, cv2.findContours_ is being used.
+
+    This method works best when the image is preprocessed and binary. For preprocessing,
+    :mod:`ttocr.data.preprocessors` that has useful functions for this such as:
+
+        * :class:`ttocr.data.preprocessors.Dilate`: for building a solid area of out a text
+        * :class:`ttocr.data.preprocessors.OtsuThresholder`: for conversion to binary
+        * :class:`ttocr.data.preprocessors.GaussianAdaptiveThresholder`: for conversion to binary
+        * :class:`ttocr.data.preprocessors.GaussianImageSmoother`: for blurring the image
+
+    Notes:
+        For more info about the algorithm, see https://docs.opencv.org/4.6.0/d4/d73/tutorial_py_contours_begin.html
+
+    .. _cv2.findContours: https://docs.opencv.org/4.6.0/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0
+    """
+
+    def __init__(self,
+        min_solid_height_limit: Optional[int] = None,
+        max_solid_height_limit: Optional[int] = None,
+        cell_threshold: Optional[int] = None,
+        min_columns: Optional[int] = None,
+        ) -> None:
+        """Initialize the detector
+
+        Args:
+            min_solid_height_limit (int, optional): minimum height of solid area to
+                detect, i.e. if detected contour's height is smaller than this,
+                it will be ignored. Recommended value is ``6``. *Tuning this value
+                in an human-in-the-loop way is recommended.*
+            max_solid_height_limit (int, optional): maximum height of solid area to
+                detect, i.e. if detected contour's height is larger than this,
+                it will be ignored. Recommended value is ``40``. *Tuning this value
+                in an human-in-the-loop way is recommended.*
+            cell_threshold (int, optional): bin sizes for clustering detected contours
+                into rows and columns. Recommended value is ``10``.
+            min_columns (int, optional): minimum number of columns to detect.
+                It works much better when input image has a single column. Hence,
+                recommended value is ``1``.
+        """
+        super().__init__()
+
+        self.min_solid_height_limit = min_solid_height_limit
+        self.max_solid_height_limit = max_solid_height_limit
+        self.cell_threshold = cell_threshold
+        self.min_columns = min_columns
+
+    @staticmethod
+    def _find_solid_boxes(image: np.ndarray,
+                          min_solid_height_limit: int,
+                          max_solid_height_limit: int) -> List[np.ndarray]:
+        """Find solid boxes in the image via finding rectangular (box) contours around them
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to detect contours
+            min_solid_height_limit (int): minimum height of solid area (see class docstring)
+            max_solid_height_limit (int): maximum height of solid area (see class docstring)
+        
+        Returns:
+            List[:class:`numpy.ndarray`]: list of detected contours
+        """
+        # TODO: check return type
+        # looking for the solid spots contours
+        contours, hierarchy = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+        # getting the solids bounding boxes based on thesolidt size assumptions
+        boxes: List = []
+        for contour in contours:
+            box = cv2.boundingRect(contour)
+            h = box[3]
+            if min_solid_height_limit < h < max_solid_height_limit:
+                boxes.append(box)
+        return boxes
+
+    @staticmethod
+    def _detect_table_of_boxes(boxes: List[np.ndarray],
+                               cell_threshold: int,
+                               min_columns: int
+                               ) -> Union[List[List[np.ndarray]], List, None]:
+        """Detect table out of given rectangular boxes
+
+        Args:
+            boxes (List[:class:`numpy.ndarray`]): list of rectangular boxes found by
+                :func:`_find_solid_boxes`
+            cell_threshold (int): bin sizes for clustering detected contours
+                into rows and columns. See class docstring.
+            min_columns (int): minimum number of columns to detect. 
+                See class docstring.
+        
+        Returns:
+            Union[List[List[:class:`numpy.ndarray`]], List, None]:
+                table (rows and columns) of detected boxes. It could be empty list
+                or None which means that no table was detected.
+        """
+        # TODO: check return type
+        rows: dict = {}
+        cols: dict = {}
+
+        # clustering the bounding boxes by their positions
+        for box in boxes:
+            (x, y, w, h) = box
+            col_key = x // cell_threshold
+            row_key = y // cell_threshold
+            cols[row_key] = [box] if col_key not in cols else cols[col_key] + [box]
+            rows[row_key] = [box] if row_key not in rows else rows[row_key] + [box]
+
+        # filtering out the clusters having less than `min_columns` cols
+        table_cells = list(filter(lambda r: len(r) >= min_columns, rows.values()))
+        # sorting the row cells by x coord
+        table_cells = [list(sorted(tb)) for tb in table_cells]
+        # sorting rows by the y coord
+        table_cells = list(sorted(table_cells, key=lambda r: r[0][1]))
+
+        return table_cells
+
+    def _build_lines(self, 
+                    table_cells: Optional[List[List[np.ndarray]]]
+                    ) -> Tuple[List, List]:
+        """Build horizontal and vertical lines out of given table cells
+
+        Args:
+            table_cells (Optional[List[List[np.ndarray]]]): a table as list of lists of boxes.
+                See :func:`_detect_table_of_boxes` for more info.
+
+        Returns:
+            Tuple[List, List]: vertical and horizontal lines
+        """
+        if table_cells is None or len(table_cells) <= 0:
+            return [], []
+
+        # find largest row (start=min_x, end=max_x)
+        max_last_col_width_row = max(table_cells, key=lambda b: b[-1][2])
+        max_x = max_last_col_width_row[-1][0] + max_last_col_width_row[-1][2]
+        min_x = max(table_cells, key=lambda b: b[-1][2])[-1][0]
+
+        # find largest column (..., end=max_y)
+        max_last_row_height_box = max(table_cells[-1], key=lambda b: b[3])
+        max_y = max_last_row_height_box[1] + max_last_row_height_box[3]
+
+        hor_lines: Union[List[Tuple[int, ...]], List] = []
+        ver_lines: Union[List[Tuple[int, ...]], List] = []
+
+        for box in table_cells:
+            x = box[0][0]
+            y = box[0][1]
+            hor_lines.append((min_x, y, max_x, y))
+
+        for box in table_cells[0]:
+            x = box[0]
+            y = box[1]
+            ver_lines.append((min_x, y, min_x, max_y))
+
+        (x, y, w, h) = table_cells[0][-1]
+        ver_lines.append((max_x, y, max_x, max_y))
+        (x, y, w, h) = table_cells[0][0]
+        hor_lines.append((min_x, max_y, max_x, max_y))
+
+        # remove overlapping lines
+        ver_lines = self._filter_overlapping_lines(lines=ver_lines,
+                                                   sorting_index=0)
+        hor_lines = self._filter_overlapping_lines(lines=hor_lines,
+                                                   sorting_index=1)
+        return ver_lines, hor_lines
+
+    def __call__(self, image: np.ndarray,
+                 plot: Optional[Path] = None,
+                 *args, **kwargs) -> Tuple[List, List]:
+        self._reset_lines()
+        # if kwargs are provided, override the class attributes
+        self.min_solid_height_limit = kwargs.get('min_solid_height_limit',
+                                                 self.min_solid_height_limit)
+        self.max_solid_height_limit = kwargs.get('max_solid_height_limit',
+                                                 self.max_solid_height_limit)
+        self.cell_threshold = kwargs.get('cell_threshold', self.cell_threshold)
+        self.min_columns = kwargs.get('min_columns', self.min_columns)
+
+        
+
+        solid_boxes = self._find_solid_boxes(
+            image=image,
+            min_solid_height_limit=self.min_solid_height_limit,
+            max_solid_height_limit=self.max_solid_height_limit
+        )
+        cells = self._detect_table_of_boxes(
+            boxes=solid_boxes,
+            cell_threshold=self.cell_threshold,
+            min_columns=self.min_columns
+        )
+        vertical_lines, horizontal_lines = self._build_lines(cells)
+
+        # logging
+        self._log(**self._get_class_attributes())
+        if plot is not None:
+            fig = plt.figure(figsize=(12, 12))
+            __all_lines = vertical_lines + horizontal_lines
+            vis = visualizers.draw_lines(image=image,
+                                         lines=__all_lines,
+                                         color=(0, 0, 255),
+                                         copy=True)
+            plt.imshow(vis, cmap='gray')
+            plt.savefig(plot / 'contour_lines.png')
+            plt.close(fig)
+        
         return vertical_lines, horizontal_lines
 
 
@@ -512,11 +771,12 @@ class TesseractOCR(OCR):
             config += f'{arg} '
         return config
 
-    def detect(self, image: np.ndarray, *args, **kwargs) -> np.ndarray:
+    def detect(self, image: np.ndarray, config: str, *args, **kwargs) -> np.ndarray:
         """Detect text in an image using Google's Tesseract OCR engine
         
         Args:
             image (:class:`numpy.ndarray`): image to detect text in
+            config (str): configuration string for Tesseract
             kwargs: keyword arguments for ``tesseract`` CLI command.
                 Most important one are:
 
@@ -533,9 +793,13 @@ class TesseractOCR(OCR):
             :class:`numpy.ndarray`: image with detected text
         """
         # pytesseract requires kwargs to be string as CLI command
-        config: str = ''
+        config = self.config
+        config_: str = ''
         if kwargs is not None:
-            config = self.__kwargs_to_string(*args, **kwargs)
+            config_ = self.__kwargs_to_string(*args, **kwargs)
+            config_ = config_.strip()
+        # append to self.config
+        config = config + config_
         config = config.strip()
         text = pytesseract.image_to_string(image, config=config)
         return text
@@ -568,8 +832,16 @@ class TesseractOCR(OCR):
         self.oem = kwargs.get('oem', self.oem)
         self.args = kwargs.get('args', self.args)
         self._log(**self._get_class_attributes())
+
+        self.config = self.__kwargs_to_string(
+            l=self.l,
+            dpi=self.dpi,
+            psm=self.psm,
+            oem=self.oem,
+            *self.args
+        )
         
-        return self.detect(image, *args, **kwargs)
+        return self.detect(image, self.config, *args, **kwargs)
 
 
 class TableCellDetector(LineDetector):
@@ -588,30 +860,43 @@ class TableCellDetector(LineDetector):
 
     """
 
-    def __init__(self, ocr: OCR = TesseractOCR) -> None:
+    def __init__(self,
+                 ocr: Optional[OCR] = None,
+                 roi_offset: Optional[int] = None) -> None:
         """
 
         Args:
             ocr (OCR): OCR instance to use for text detection. Has
                 to be an instance of :class:`OCR`. E.g. see :class:`TesseractOCR`.
                 Defaults to :class:`TesseractOCR`.
+            roi_offset (int, optional): offset of the ROI. If :class:`ContourLinesDetector`
+                is used for line detection, recommended to be ``0``, otherwise, ``4``.
         """
         super().__init__()
 
         self.__ocr = ocr
+        self.roi_offset = roi_offset
         self.__ocred_cells: np.ndarray = None
     
     @property
     def _num_rows(self) -> int:
         """Number of rows in table
         """
-        return len(self.horizontal_lines) - 1
+        nr = len(self.horizontal_lines) - 1
+        # log warning if number of rows is zero
+        if nr == 0:
+            self.logger.warning('Number of rows is zero!')
+        return nr
     
     @property
     def _num_columns(self) -> int:
         """Number of columns in table
         """
-        return len(self.vertical_lines) - 1
+        nc = len(self.vertical_lines) - 1
+        # log warning if number of columns is zero
+        if nc == 0:
+            self.logger.warning('Number of columns is zero!')
+        return nc
 
     def _log(self):
         self.logger.info('Using TableCellDetector')
@@ -672,14 +957,22 @@ class TableCellDetector(LineDetector):
         x1 = vertical_lines[left_line_index][2] + offset
         y1 = horizontal_lines[top_line_index][3] + offset
         x2 = vertical_lines[right_line_index][2] - offset
-        y2 = horizontal_lines[bottom_line_index][3] - offset    
+        y2 = horizontal_lines[bottom_line_index][3] - offset
+        
+        # relax offsets when x1=x2 or y1=y2
+        if x1 == x2:
+            x1 = x1 - (offset // 2)
+            x2 = x2 + (offset // 2)
+        if y1 == y2:
+            y1 = y1 - (offset // 2)
+            y2 = y2 + (offset // 2)
+        
         w = x2 - x1
         h = y2 - y1
 
         # cropped ROI
         roi = self._crop_image(image, x1, y1, w, h)
         return roi, (x1, y1, w, h)
-
 
     def __call__(self, image: np.ndarray,
                  plot: Union[Path, str, None] = None,
@@ -693,6 +986,8 @@ class TableCellDetector(LineDetector):
                 Note that this is for debugging purposes only hence hidden from class definition.
 
         """
+        # if kwargs provided, override class attributes
+        self.roi_offset = kwargs.get('roi_offset', self.roi_offset)
         self._log()
 
         # all detected cells
@@ -720,8 +1015,13 @@ class TableCellDetector(LineDetector):
                     vertical_lines=self.vertical_lines,
                     row_index=i,
                     col_index=j,
-                    offset=4,
+                    offset=self.roi_offset,
                 )
+
+                # skip if ROI is empty
+                if roi.shape[0] == 0 or roi.shape[1] == 0:
+                    self.logger.warning(f'ROI is empty at {i}, {j}, skipped.')
+                    continue
 
                 # detect text via OCR
                 text = self.__ocr(roi)

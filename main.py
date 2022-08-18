@@ -4,6 +4,7 @@ import numpy as np
 from ttocr.data import io
 from ttocr.data import preprocessors
 # ours: detection
+from ttocr.detection import DetectionMode
 from ttocr.detection import detectors
 # ours: utils
 from ttocr.version import VERSION as TTOCR_VERSION
@@ -69,7 +70,7 @@ if __name__ == '__main__':
         __libs_logger.addHandler(stderr_stream_handler)
 
     # log experiment configs
-    MLFLOW_EXPERIMENT_NAME = f'Fix #1 - {TTOCR_VERSION}'
+    MLFLOW_EXPERIMENT_NAME = f'Morphology - Sole column - {TTOCR_VERSION}'
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     MLFLOW_TAGS = {
         'stage': 'dev'  # dev, beta, production
@@ -80,8 +81,12 @@ if __name__ == '__main__':
     logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
 
     try:
+        # choose table detection method
+        DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
+        logger.info(f'Detection mode: {DETECTION_MODE}')
+
         # read image
-        filename = 'sample/orig/01-table.png'
+        filename = 'sample/orig/03-col-with-border.png'
         img_reader = io.CV2ImageReader()
         img = img_reader(filename)
 
@@ -92,39 +97,90 @@ if __name__ == '__main__':
         color_converter = preprocessors.CV2ImageColorConverter(
             mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY
         )
-        gray_img = color_converter(image=img)
+        img = color_converter(image=img)
 
-        # detect canny edges
-        canny_detector = detectors.CannyEdgeDetector(
-            threshold1=50,
-            threshold2=200,
-            aperture_size=3,
-            L2_gradient=False
-        )
-        canny_edges = canny_detector(image=gray_img)
+        if DETECTION_MODE == DetectionMode.ML_FULL_TABLE:
+            # detect canny edges
+            canny_detector = detectors.CannyEdgeDetector(
+                threshold1=50,
+                threshold2=200,
+                aperture_size=3,
+                L2_gradient=False
+            )
+            canny_edges = canny_detector(image=img,
+                                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
-        # detect lines
-        line_detector = detectors.ProbabilisticHoughLinesDetector(
-            rho=1,
-            theta=np.pi / 180,
-            threshold=100,
-            min_line_length=350,
-            max_line_gap=18
-        )
-        lines = line_detector(image=canny_edges)
+            # detect lines
+            line_detector = detectors.ProbabilisticHoughLinesDetector(
+                rho=1,
+                theta=np.pi / 180,
+                threshold=100,
+                min_line_length=50,
+                max_line_gap=10
+            )
+            lines = line_detector(image=canny_edges)
+            
+            # define ocr engine
+            ocr_engine = detectors.TesseractOCR(
+                l='eng+fas',
+                dpi=150,
+                psm=12,
+                oem=1,
+            )
+            table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
+            table_cell_ocr.vertical_lines = lines[0]
+            table_cell_ocr.horizontal_lines = lines[1]
+            table_cell_ocr(image=img,
+                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
         
-        # define ocr engine
-        ocr_engine = detectors.TesseractOCR(
-            l='eng+fas',
-            dpi=100,
-            psm=6,
-            oem=3,
-        )
-        table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
-        table_cell_ocr.vertical_lines = lines[0]
-        table_cell_ocr.horizontal_lines = lines[1]
-        table_cell_ocr(image=gray_img,
-                       plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+        elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
+            # smooth image
+            gaussian_blur = preprocessors.GaussianImageSmoother(
+                border_type=preprocessors.CV2BorderTypes.DEFAULT
+            )
+            pre_img = gaussian_blur(image=img, kernel_size=3)
+
+            # binarize image
+            adaptive_thresh = preprocessors.GaussianAdaptiveThresholder(
+                max_value=255,
+                adaptive_method=preprocessors.CV2AdaptiveThresholdTypes.GAUSSIAN_C,
+                threshold_type=preprocessors.CV2ThresholdTypes.BINARY,
+            )
+            pre_img = adaptive_thresh(image=pre_img, block_size=11, constant=5,
+                                  plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+
+            # make text blocks as solid blocks
+            dilater = preprocessors.Dilate(
+                morph_size=3,
+            )
+            dilated_img = dilater(image=pre_img, iterations=3,
+                          plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            
+            # detect lines of table and cells
+            contour_line_detector = detectors.ContourLinesDetector(
+                cell_threshold=10,
+                min_columns=1,
+            )
+            vertical_lines, horizontal_lines = contour_line_detector(
+                image=dilated_img,
+                min_solid_height_limit=6,
+                max_solid_height_limit=40,
+                plot=MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
+
+            # define ocr engine
+            ocr_engine = detectors.TesseractOCR(
+                l='eng',
+                dpi=100,
+                psm=11,
+                oem=1,
+            )
+            table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
+            table_cell_ocr.vertical_lines = vertical_lines
+            table_cell_ocr.horizontal_lines = horizontal_lines
+            table_cell_ocr(image=pre_img,
+                           roi_offset=0,
+                           plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
 
     except Exception as e:
         logger.exception(e)
