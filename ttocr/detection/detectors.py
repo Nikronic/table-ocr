@@ -3,7 +3,7 @@ __all__ = [
     'Detector', 'EdgeDetector', 'LineDetector', 'OCR',
     # concrete classes
     'CannyEdgeDetector', 'ProbabilisticHoughLinesDetector', 'NaiveHoughLinesDetector',
-    'TesseractOCR', 'TableCellDetector'
+    'TesseractOCR', 'TableCellDetector', 'ContourLinesDetector'
 ]
 
 # core

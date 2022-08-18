@@ -3,10 +3,11 @@ __all__ = [
 ]
 
 # core
-from typing import List, Optional, Tuple
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
+# helpers
+from typing import List, Optional, Tuple
 
 
 def draw_lines(image: np.ndarray,

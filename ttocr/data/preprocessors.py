@@ -8,7 +8,6 @@ __all__ = [
 ]
 
 # core
-from optparse import Option
 import numpy as np
 import cv2
 # helpers
