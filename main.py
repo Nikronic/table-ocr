@@ -156,7 +156,17 @@ if __name__ == '__main__':
             img = dilater(image=img, iterations=3,
                           plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
             
-
+            # detect lines of table and cells
+            contour_line_detector = detectors.ContourLinesDetector(
+                cell_threshold=10,
+                min_columns=1,
+            )
+            vertical_lines, horizontal_lines = contour_line_detector(
+                image=img,
+                min_solid_height_limit=6,
+                max_solid_height_limit=40,
+                plot=MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
 
     except Exception as e:
         logger.exception(e)

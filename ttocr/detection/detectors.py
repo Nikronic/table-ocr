@@ -10,6 +10,8 @@ __all__ = [
 import pytesseract
 import numpy as np
 import cv2
+# ours: helpers
+from ttocr.utils import visualizers
 # helpers
 from typing import List, Optional, Tuple, Union
 import matplotlib.pyplot as plt
@@ -493,6 +495,208 @@ class NaiveHoughLinesDetector(LineDetector):
                             max_theta=self.max_theta)
         # separate lines into vertical and horizontal
         vertical_lines, horizontal_lines = self.get_vertical_horizontal_lines(lines)
+        return vertical_lines, horizontal_lines
+
+
+class ContourLinesDetector(LineDetector):
+    """Detects lines via finding contours around solid areas
+
+    For finding contours, cv2.findContours_ is being used.
+
+    This method works best when the image is preprocessed and binary. For preprocessing,
+    :mod:`ttocr.data.preprocessors` that has useful functions for this such as:
+
+        * :class:`ttocr.data.preprocessors.Dilate`: for building a solid area of out a text
+        * :class:`ttocr.data.preprocessors.OtsuThresholder`: for conversion to binary
+        * :class:`ttocr.data.preprocessors.GaussianAdaptiveThresholder`: for conversion to binary
+        * :class:`ttocr.data.preprocessors.GaussianImageSmoother`: for blurring the image
+
+    Notes:
+        For more info about the algorithm, see https://docs.opencv.org/4.6.0/d4/d73/tutorial_py_contours_begin.html
+
+    .. _cv2.findContours: https://docs.opencv.org/4.6.0/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0
+    """
+
+    def __init__(self,
+        min_solid_height_limit: Optional[int] = None,
+        max_solid_height_limit: Optional[int] = None,
+        cell_threshold: Optional[int] = None,
+        min_columns: Optional[int] = None,
+        ) -> None:
+        """Initialize the detector
+
+        Args:
+            min_solid_height_limit (int, optional): minimum height of solid area to
+                detect, i.e. if detected contour's height is smaller than this,
+                it will be ignored. Recommended value is ``6``. *Tuning this value
+                in an human-in-the-loop way is recommended.*
+            max_solid_height_limit (int, optional): maximum height of solid area to
+                detect, i.e. if detected contour's height is larger than this,
+                it will be ignored. Recommended value is ``40``. *Tuning this value
+                in an human-in-the-loop way is recommended.*
+            cell_threshold (int, optional): bin sizes for clustering detected contours
+                into rows and columns. Recommended value is ``10``.
+            min_columns (int, optional): minimum number of columns to detect.
+                It works much better when input image has a single column. Hence,
+                recommended value is ``1``.
+        """
+        super().__init__()
+
+        self.min_solid_height_limit = min_solid_height_limit
+        self.max_solid_height_limit = max_solid_height_limit
+        self.cell_threshold = cell_threshold
+        self.min_columns = min_columns
+
+    @staticmethod
+    def _find_solid_boxes(image: np.ndarray,
+                          min_solid_height_limit: int,
+                          max_solid_height_limit: int) -> List[np.ndarray]:
+        """Find solid boxes in the image via finding rectangular (box) contours around them
+        
+        Args:
+            image (:class:`numpy.ndarray`): image to detect contours
+            min_solid_height_limit (int): minimum height of solid area (see class docstring)
+            max_solid_height_limit (int): maximum height of solid area (see class docstring)
+        
+        Returns:
+            List[:class:`numpy.ndarray`]: list of detected contours
+        """
+        # TODO: check return type
+        # looking for the solid spots contours
+        contours, hierarchy = cv2.findContours(image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+
+        # getting the solids bounding boxes based on thesolidt size assumptions
+        boxes: List = []
+        for contour in contours:
+            box = cv2.boundingRect(contour)
+            h = box[3]
+            if min_solid_height_limit < h < max_solid_height_limit:
+                boxes.append(box)
+        return boxes
+
+    @staticmethod
+    def _detect_table_of_boxes(boxes: List[np.ndarray],
+                               cell_threshold: int,
+                               min_columns: int
+                               ) -> Union[List[List[np.ndarray]], List, None]:
+        """Detect table out of given rectangular boxes
+
+        Args:
+            boxes (List[:class:`numpy.ndarray`]): list of rectangular boxes found by
+                :func:`_find_solid_boxes`
+            cell_threshold (int): bin sizes for clustering detected contours
+                into rows and columns. See class docstring.
+            min_columns (int): minimum number of columns to detect. 
+                See class docstring.
+        
+        Returns:
+            Union[List[List[:class:`numpy.ndarray`]], List, None]:
+                table (rows and columns) of detected boxes. It could be empty list
+                or None which means that no table was detected.
+        """
+        # TODO: check return type
+        rows: dict = {}
+        cols: dict = {}
+
+        # clustering the bounding boxes by their positions
+        for box in boxes:
+            (x, y, w, h) = box
+            col_key = x // cell_threshold
+            row_key = y // cell_threshold
+            cols[row_key] = [box] if col_key not in cols else cols[col_key] + [box]
+            rows[row_key] = [box] if row_key not in rows else rows[row_key] + [box]
+
+        # filtering out the clusters having less than `min_columns` cols
+        table_cells = list(filter(lambda r: len(r) >= min_columns, rows.values()))
+        # sorting the row cells by x coord
+        table_cells = [list(sorted(tb)) for tb in table_cells]
+        # sorting rows by the y coord
+        table_cells = list(sorted(table_cells, key=lambda r: r[0][1]))
+
+        return table_cells
+
+    @staticmethod
+    def _build_lines(table_cells: Optional[List[List[np.ndarray]]]) -> Tuple[List, List]:
+        """Build horizontal and vertical lines out of given table cells
+
+        Args:
+            table_cells (Optional[List[List[np.ndarray]]]): a table as list of lists of boxes.
+                See :func:`_detect_table_of_boxes` for more info.
+
+        Returns:
+            Tuple[List, List]: vertical and horizontal lines
+        """
+        if table_cells is None or len(table_cells) <= 0:
+            return [], []
+
+        # find largest row (start=min_x, end=max_x)
+        max_last_col_width_row = max(table_cells, key=lambda b: b[-1][2])
+        max_x = max_last_col_width_row[-1][0] + max_last_col_width_row[-1][2]
+        min_x = max(table_cells, key=lambda b: b[-1][2])[-1][0]
+
+        # find largest column (..., end=max_y)
+        max_last_row_height_box = max(table_cells[-1], key=lambda b: b[3])
+        max_y = max_last_row_height_box[1] + max_last_row_height_box[3]
+
+        hor_lines: Union[List[Tuple[int, ...]], List] = []
+        ver_lines: Union[List[Tuple[int, ...]], List] = []
+
+        for box in table_cells:
+            x = box[0][0]
+            y = box[0][1]
+            hor_lines.append((min_x, y, max_x, y))
+
+        for box in table_cells[0]:
+            x = box[0]
+            y = box[1]
+            ver_lines.append((min_x, y, min_x, max_y))
+
+        (x, y, w, h) = table_cells[0][-1]
+        ver_lines.append((max_x, y, max_x, max_y))
+        (x, y, w, h) = table_cells[0][0]
+        hor_lines.append((min_x, max_y, max_x, max_y))
+
+        return ver_lines, hor_lines
+
+    def __call__(self, image: np.ndarray,
+                 plot: Optional[Path] = None,
+                 *args, **kwargs) -> Tuple[List, List]:
+        self._reset_lines()
+        # if kwargs are provided, override the class attributes
+        self.min_solid_height_limit = kwargs.get('min_solid_height_limit',
+                                                 self.min_solid_height_limit)
+        self.max_solid_height_limit = kwargs.get('max_solid_height_limit',
+                                                 self.max_solid_height_limit)
+        self.cell_threshold = kwargs.get('cell_threshold', self.cell_threshold)
+        self.min_columns = kwargs.get('min_columns', self.min_columns)
+
+        
+
+        solid_boxes = self._find_solid_boxes(
+            image=image,
+            min_solid_height_limit=self.min_solid_height_limit,
+            max_solid_height_limit=self.max_solid_height_limit
+        )
+        cells = self._detect_table_of_boxes(
+            boxes=solid_boxes,
+            cell_threshold=self.cell_threshold,
+            min_columns=self.min_columns
+        )
+        vertical_lines, horizontal_lines = self._build_lines(cells)
+
+        # logging
+        self._log(**self._get_class_attributes())
+        if plot is not None:
+            fig = plt.figure(figsize=(12, 12))
+            __all_lines = vertical_lines + horizontal_lines
+            vis = visualizers.draw_lines(image=image,
+                                         lines=__all_lines,
+                                         color=(0, 0, 255),
+                                         copy=True)
+            plt.imshow(vis, cmap='gray')
+            plt.savefig(plot / 'contour_lines.png')
+            plt.close(fig)
+        
         return vertical_lines, horizontal_lines
 
 
