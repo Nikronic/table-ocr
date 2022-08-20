@@ -161,46 +161,48 @@ with gr.Blocks() as demo:
                     step=2,
                     value=3,
                 )
-                with gr.Row():
-                    gr_dilation_iterations = gr.Number(
-                        label='Number of dilation iterations',
-                        precision=0,
-                        value=2,
+                with gr.Column():
+                    with gr.Row():
+                        gr_dilation_iterations = gr.Number(
+                            label='Number of dilation iterations',
+                            precision=0,
+                            value=2,
+                        )
+                        gr_contour_line_cell_threshold = gr.Number(
+                            label='Line cell threshold',
+                            precision=0,
+                            value=10,
+                        )
+                    with gr.Row():
+                        gr_contour_min_solid_height_limit = gr.Number(
+                            label='Minimum cell height',
+                            precision=0,
+                            value=6,
+                        )
+                        gr_contour_max_solid_height_limit = gr.Number(
+                            label='Maximum cell height',
+                            precision=0,
+                            value=40,
+                        )
+                    gr_roi_offset = gr.Slider(
+                        label='ROI offset (margin)',
+                        minimum=0,
+                        maximum=10,
+                        step=1,
+                        value=0,
                     )
-                    gr_contour_line_cell_threshold = gr.Number(
-                        label='Line cell threshold',
-                        precision=0,
-                        value=10,
-                    )
-                with gr.Row():
-                    gr_contour_min_solid_height_limit = gr.Number(
-                        label='Minimum cell height',
-                        precision=0,
-                        value=6,
-                    )
-                    gr_contour_max_solid_height_limit = gr.Number(
-                        label='Maximum cell height',
-                        precision=0,
-                        value=40,
-                    )
-                gr_roi_offset = gr.Slider(
-                    label='ROI offset (margin)',
-                    minimum=0,
-                    maximum=10,
-                    step=1,
-                    value=0,
-                )
 
             # common
             with gr.Column():
-                gr_ocr_lang = gr.Textbox(
-                    label='Languages',
-                    value='eng',
-                    lines=1,
-                    max_lines=1,
-                    placeholder='eng+fas+[LANG_3CHAR_CODE]',
-                )
                 with gr.Row():
+                    gr_ocr_lang = gr.Textbox(
+                        label='Languages',
+                        value='eng',
+                        lines=1,
+                        max_lines=1,
+                        placeholder='eng+fas+[LANG_3CHAR_CODE]',
+                    )
+                    
                     gr_ocr_dpi = gr.Number(
                         label='OCR DPI',
                         precision=0,
