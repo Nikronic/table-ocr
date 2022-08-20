@@ -27,6 +27,7 @@ logger_formatter = logging.Formatter(
 )
 
 # setup dirs for mlflow artifacts (logs, configs, etc)
+mlflow.set_tracking_uri('http://localhost:5000')
 MLFLOW_ARTIFACTS_PATH = Path('artifacts')
 MLFLOW_ARTIFACTS_LOGS_PATH = MLFLOW_ARTIFACTS_PATH / 'logs'
 MLFLOW_ARTIFACTS_CONFIGS_PATH = MLFLOW_ARTIFACTS_PATH / 'configs'
@@ -72,12 +73,11 @@ mlflow.set_tags(MLFLOW_TAGS)
 
 logger.info(f'MLflow experiment name: {MLFLOW_EXPERIMENT_NAME}')
 logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
-mlflow.set_tracking_uri('http://localhost:5000')
 
 # gradio interface
 def predict(
         image: np.ndarray,
-        mode: DetectionMode = DetectionMode.ML_SINGLE_COLUMN_TABLE,
+        mode: bool = True,
 
         # preprocessing for ML_TABLE
         canny_threshold1: float = 50,
@@ -95,10 +95,13 @@ def predict(
         thresh_c: int = 5,
 
         dilate_morph_size: int = 3,
+        dilation_iterations: int = 3,
 
         contour_line_cell_threshold: int = 10,
         contour_min_solid_height_limit: int = 6,
         contour_max_solid_height_limit: int = 40,
+
+        roi_offset: int = 0,
 
         # common
         ocr_lang: str = 'eng',
@@ -108,13 +111,18 @@ def predict(
 
 
     ) -> List[str]:
-    # choose table detection method
-    DETECTION_MODE = mode
+    # convert gradio interface type to ttocr type
+    ocr_psm = int(ocr_psm)
+    ocr_oem = int(ocr_oem)
 
-    # read image
-    filename = 'sample/orig/03-col-with-border.png'
-    img_reader = io.CV2ImageReader()
-    img = img_reader(filename)
+    # choose table detection method
+    if mode:
+        DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
+    else:
+        DETECTION_MODE = DetectionMode.ML_FULL_TABLE
+
+    # get image
+    img = image
 
     # convert color to gray
     color_converter = preprocessors.CV2ImageColorConverter(
@@ -181,7 +189,7 @@ def predict(
         dilater = preprocessors.Dilate(
             morph_size=dilate_morph_size,
         )
-        dilated_img = dilater(image=pre_img, iterations=3,
+        dilated_img = dilater(image=pre_img, iterations=dilation_iterations,
                         plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
         
         # detect lines of table and cells
@@ -191,8 +199,8 @@ def predict(
         )
         vertical_lines, horizontal_lines = contour_line_detector(
             image=dilated_img,
-            min_solid_height_limit=6,
-            max_solid_height_limit=40,
+            min_solid_height_limit=contour_min_solid_height_limit,
+            max_solid_height_limit=contour_max_solid_height_limit,
             plot=MLFLOW_ARTIFACTS_IMAGES_PATH
         )
 
@@ -207,18 +215,154 @@ def predict(
         table_cell_ocr.vertical_lines = vertical_lines
         table_cell_ocr.horizontal_lines = horizontal_lines
         texts = table_cell_ocr(image=pre_img,
-                               roi_offset=0,
+                               roi_offset=roi_offset,
                                lot=MLFLOW_ARTIFACTS_IMAGES_PATH)
         return texts
 
 # build gradio interface given dataframe dtype
-inputs: List[gr.components.Component] = []
+inputs: List[gr.components.Component] = [
+    # input image
+    gr.Image(
+        label='The image that needs to be OCRed',
+    ), 
+    gr.Checkbox(
+        label='Single Column?',
+        value=True,
+    ),
+
+    # preprocessing for ML_FULL_TABLE
+    gr.Slider(
+        label='Canny threshold1',
+        minimum=0,
+        maximum=255,
+        step=5,
+        value=50,
+    ),
+    gr.Slider(
+        label='Canny threshold2',
+        minimum=0,
+        maximum=255,
+        step=5,
+        value=200,
+    ),
+    gr.Slider(
+        label='Canny aperture size',
+        minimum=3,
+        maximum=15,
+        step=2,
+        value=3,
+    ),
+    gr.Checkbox(
+        label='Canny L2 gradient',
+        value=False,
+    ),
+    gr.Number(
+        label='Hough lines minimum line length',
+        precision=0,
+        value=40,
+    ),
+    gr.Number(
+        label='Hough lines maximum line gap',
+        precision=0,
+        value=10,
+    ),
+
+    # preprocessing for ML_SINGLE_COLUMN_TABLE
+    gr.Slider(
+        label='Smoothing filter kernel size',
+        minimum=3,
+        maximum=15,
+        step=2,
+        value=3,
+    ),
+    gr.Slider(
+        label='Adaptive thresholding block size',
+        minimum=3,
+        maximum=21,
+        step=2,
+        value=11,
+    ),
+    gr.Slider(
+        label='Adaptive thresholding constant',
+        minimum=1,
+        maximum=10,
+        step=1,
+        value=5,
+    ),
+    gr.Slider(
+        label='Structuring element size of dilation',
+        minimum=1,
+        maximum=15,
+        step=2,
+        value=3,
+    ),
+    gr.Number(
+        label='Number of dilation iterations',
+        precision=0,
+        value=2,
+    ),
+    gr.Number(
+        label='Line cell threshold',
+        precision=0,
+        value=10,
+    ),
+    gr.Number(
+        label='Minimum cell height',
+        precision=0,
+        value=6,
+    ),
+    gr.Number(
+        label='Maximum cell height',
+        precision=0,
+        value=40,
+    ),
+    gr.Slider(
+        label='ROI offset (margin)',
+        minimum=0,
+        maximum=10,
+        step=1,
+        value=0,
+    ),
+
+    # common
+    gr.Textbox(
+        label='Languages',
+        value='eng',
+        lines=1,
+        max_lines=1,
+        placeholder='eng+fas+[LANG_3CHAR_CODE]',
+    ),
+    gr.Number(
+        label='OCR DPI',
+        precision=0,
+        value=150,
+    ),
+    gr.Dropdown(
+        label='OCR PSM',
+        choices=[
+            '3', '6', '11', '12'
+        ],
+        value='6',
+    ),
+    gr.Dropdown(
+        label='OCR PSM',
+        choices=[
+            '1', '2', '3', '4'
+        ],
+        value='1',
+    ),
+]
 
 
 # prediction probability output
 outputs: gr.components.Component = [
-    gr.Textbox(label='Percentage of acceptance'),
-    gr.Number(label='Probability'),
+    gr.Dataframe(
+        label='OCR output',
+        type='array',
+        max_rows=None,
+        max_cols=None,
+        wrap=True,
+    ),
 ]
 
 title = 'TourTableOCR'
