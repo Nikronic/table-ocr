@@ -65,3 +65,4 @@ target/
 artifacts/
 mlflow.db
 api/temp
+mlruns
