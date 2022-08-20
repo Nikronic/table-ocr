@@ -66,3 +66,6 @@ artifacts/
 mlflow.db
 api/temp
 mlruns
+
+# gradio
+gradio/flags

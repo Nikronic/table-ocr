@@ -378,6 +378,6 @@ gr.Interface(
     outputs=outputs,
     title=title,
     description=description,
-    flagging_dir='gradio/flags',
+    flagging_dir='flags',
     analytics_enabled=True,
 ).launch(debug=True, enable_queue=True, server_port=7860)
