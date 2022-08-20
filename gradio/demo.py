@@ -74,8 +74,166 @@ mlflow.set_tags(MLFLOW_TAGS)
 logger.info(f'MLflow experiment name: {MLFLOW_EXPERIMENT_NAME}')
 logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
 
-# gradio interface
-def predict(
+title = 'TourTableOCR'
+description = 'OCRing weirdge tables'
+
+with gr.Blocks() as demo:
+    with gr.Row() as inputs:
+        with gr.Column():
+            # input image
+            gr_image = gr.Image(
+                label='The image that needs to be OCRed',
+                tool='select'
+            )
+            gr_mode = gr.Checkbox(
+                label='Single Column?',
+                value=True,
+            )
+
+        with gr.Column():
+            with gr.Column(visible=False) as gr_full_table_col:
+                # preprocessing for ML_FULL_TABLE
+                gr_canny_threshold1 = gr.Slider(
+                    label='Canny threshold1',
+                    minimum=0,
+                    maximum=255,
+                    step=5,
+                    value=50,
+                )
+                gr_canny_threshold2 = gr.Slider(
+                    label='Canny threshold2',
+                    minimum=0,
+                    maximum=255,
+                    step=5,
+                    value=200,
+                )
+                canny_aperture_size = gr.Slider(
+                    label='Canny aperture size',
+                    minimum=3,
+                    maximum=15,
+                    step=2,
+                    value=3,
+                )
+
+                with gr.Row():
+                    gr_canny_L2_gradient = gr.Checkbox(
+                        label='Canny L2 gradient',
+                        value=False,
+                    )
+                    gr_hough_min_line_length = gr.Number(
+                        label='Hough lines minimum line length',
+                        precision=0,
+                        value=40,
+                    )
+                    gr_hough_max_line_gap = gr.Number(
+                        label='Hough lines maximum line gap',
+                        precision=0,
+                        value=10,
+                    )
+            
+            with gr.Column() as gr_single_column_table_col:
+                # preprocessing for ML_SINGLE_COLUMN_TABLE
+                gr_smooth_kernel_size = gr.Slider(
+                    label='Smoothing filter kernel size',
+                    minimum=3,
+                    maximum=15,
+                    step=2,
+                    value=3,
+                )
+                gr_thresh_block_size = gr.Slider(
+                    label='Adaptive thresholding block size',
+                    minimum=3,
+                    maximum=21,
+                    step=2,
+                    value=11,
+                )
+                gr_thresh_c = gr.Slider(
+                    label='Adaptive thresholding constant',
+                    minimum=1,
+                    maximum=10,
+                    step=1,
+                    value=5,
+                )
+                gr_dilate_morph_size = gr.Slider(
+                    label='Structuring element size of dilation',
+                    minimum=1,
+                    maximum=15,
+                    step=2,
+                    value=3,
+                )
+                with gr.Row():
+                    gr_dilation_iterations = gr.Number(
+                        label='Number of dilation iterations',
+                        precision=0,
+                        value=2,
+                    )
+                    gr_contour_line_cell_threshold = gr.Number(
+                        label='Line cell threshold',
+                        precision=0,
+                        value=10,
+                    )
+                with gr.Row():
+                    gr_contour_min_solid_height_limit = gr.Number(
+                        label='Minimum cell height',
+                        precision=0,
+                        value=6,
+                    )
+                    gr_contour_max_solid_height_limit = gr.Number(
+                        label='Maximum cell height',
+                        precision=0,
+                        value=40,
+                    )
+                gr_roi_offset = gr.Slider(
+                    label='ROI offset (margin)',
+                    minimum=0,
+                    maximum=10,
+                    step=1,
+                    value=0,
+                )
+
+            # common
+            with gr.Column():
+                gr_ocr_lang = gr.Textbox(
+                    label='Languages',
+                    value='eng',
+                    lines=1,
+                    max_lines=1,
+                    placeholder='eng+fas+[LANG_3CHAR_CODE]',
+                )
+                with gr.Row():
+                    gr_ocr_dpi = gr.Number(
+                        label='OCR DPI',
+                        precision=0,
+                        value=150,
+                    )
+                    gr_ocr_psm = gr.Dropdown(
+                        label='OCR PSM',
+                        choices=[
+                            '3', '6', '11', '12'
+                        ],
+                        value='6',
+                    )
+                    gr_ocr_oem = gr.Dropdown(
+                        label='OCR PSM',
+                        choices=[
+                            '1', '2', '3', '4'
+                        ],
+                        value='1',
+                    )
+        
+        with gr.Column() as gr_output_col:
+            gr_ocr_output = gr.Dataframe(
+                label='OCR output',
+                type='array',
+                max_rows=None,
+                max_cols=None,
+                wrap=True,
+            )
+        
+    submit_btn = gr.Button("Submit")
+
+    # predict on submit
+    def predict(
         image: np.ndarray,
         mode: bool = True,
 
@@ -111,273 +269,155 @@ def predict(
 
 
     ) -> List[str]:
-    # convert gradio interface type to ttocr type
-    ocr_psm = int(ocr_psm)
-    ocr_oem = int(ocr_oem)
+        # convert gradio interface type to ttocr type
+        ocr_psm = int(ocr_psm)
+        ocr_oem = int(ocr_oem)
 
-    # choose table detection method
-    if mode:
-        DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
-    else:
-        DETECTION_MODE = DetectionMode.ML_FULL_TABLE
+        # choose table detection method
+        if mode:
+            DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
+        else:
+            DETECTION_MODE = DetectionMode.ML_FULL_TABLE
+        
+        # get image
+        img = image
 
-    # get image
-    img = image
+        # convert color to gray
+        color_converter = preprocessors.CV2ImageColorConverter(
+            mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY
+        )
+        img = color_converter(image=img)
 
-    # convert color to gray
-    color_converter = preprocessors.CV2ImageColorConverter(
-        mode=preprocessors.CV2ImageColorConverterModes.BGR2GRAY
+        if DETECTION_MODE == DetectionMode.ML_FULL_TABLE:
+            # detect canny edges
+            canny_detector = detectors.CannyEdgeDetector(
+                threshold1=canny_threshold1,
+                threshold2=canny_threshold2,
+                aperture_size=canny_aperture_size,
+                L2_gradient=canny_L2_gradient
+            )
+            canny_edges = canny_detector(image=img,
+                                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+
+            # detect lines
+            line_detector = detectors.ProbabilisticHoughLinesDetector(
+                rho=1,
+                theta=np.pi / 180,
+                threshold=100,
+                min_line_length=hough_min_line_length,
+                max_line_gap=hough_max_line_gap
+            )
+            lines = line_detector(image=canny_edges)
+            
+            # define ocr engine
+            ocr_engine = detectors.TesseractOCR(
+                l=ocr_lang,
+                dpi=ocr_dpi,  # 300
+                psm=ocr_psm,  # 6
+                oem=ocr_oem,  # 1
+            )
+            table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
+            table_cell_ocr.vertical_lines = lines[0]
+            table_cell_ocr.horizontal_lines = lines[1]
+            texts = table_cell_ocr(
+                image=img,
+                plot=MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
+            return texts
+        
+        elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
+            # smooth image
+            gaussian_blur = preprocessors.GaussianImageSmoother(
+                border_type=preprocessors.CV2BorderTypes.DEFAULT
+            )
+            pre_img = gaussian_blur(image=img, kernel_size=smooth_kernel_size)
+
+            # binarize image
+            adaptive_thresh = preprocessors.GaussianAdaptiveThresholder(
+                max_value=255,
+                adaptive_method=preprocessors.CV2AdaptiveThresholdTypes.GAUSSIAN_C,
+                threshold_type=preprocessors.CV2ThresholdTypes.BINARY,
+            )
+            pre_img = adaptive_thresh(image=pre_img,
+                                    block_size=thresh_block_size,
+                                    constant=thresh_c,
+                                    plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+
+            # make text blocks as solid blocks
+            dilater = preprocessors.Dilate(
+                morph_size=dilate_morph_size,
+            )
+            dilated_img = dilater(image=pre_img, iterations=dilation_iterations,
+                            plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            
+            # detect lines of table and cells
+            contour_line_detector = detectors.ContourLinesDetector(
+                cell_threshold=contour_line_cell_threshold,
+                min_columns=1,
+            )
+            vertical_lines, horizontal_lines = contour_line_detector(
+                image=dilated_img,
+                min_solid_height_limit=contour_min_solid_height_limit,
+                max_solid_height_limit=contour_max_solid_height_limit,
+                plot=MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
+
+            # define ocr engine
+            ocr_engine = detectors.TesseractOCR(
+                l=ocr_lang,
+                dpi=ocr_dpi,  # 150
+                psm=ocr_psm,  # 11
+                oem=ocr_oem,  # 1
+            )
+            table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
+            table_cell_ocr.vertical_lines = vertical_lines
+            table_cell_ocr.horizontal_lines = horizontal_lines
+            texts = table_cell_ocr(image=pre_img,
+                                roi_offset=roi_offset,
+                                lot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            return texts
+
+    # TODO: fix dynamic visual change based on single col or full table
+    # # show/hide features given mode
+    # def show_features(mode: bool) -> gr.components.Component:
+    #     if mode:
+    #         gr_full_table_col.update(visible=False)
+    #         gr_single_column_table_col.update(visible=True)
+    #     else:
+    #         gr_full_table_col.update(visible=True)
+    #         gr_single_column_table_col.update(visible=False)
+    #     return gr_mode
+
+    # gr_mode.change(
+    #     fn=show_features,
+    #     inputs=gr_mode,
+    #     outputs=gr_full_table_col,
+    # )
+
+    # add event to submit button
+    submit_btn.click(
+        fn=predict,
+        inputs=[
+            gr_image, gr_mode,
+
+            gr_canny_threshold1, gr_canny_threshold2, 
+            canny_aperture_size, gr_canny_L2_gradient,
+            gr_hough_min_line_length, gr_hough_max_line_gap,
+
+            gr_smooth_kernel_size, gr_thresh_block_size,
+            gr_thresh_c, gr_dilate_morph_size, gr_dilation_iterations,
+            gr_contour_line_cell_threshold, gr_contour_min_solid_height_limit,
+            gr_contour_max_solid_height_limit, gr_roi_offset,
+
+            gr_ocr_lang, gr_ocr_dpi, gr_ocr_psm, gr_ocr_oem
+        ],
+        outputs=[
+            gr_ocr_output
+        ],
     )
-    img = color_converter(image=img)
-
-    if DETECTION_MODE == DetectionMode.ML_FULL_TABLE:
-        # detect canny edges
-        canny_detector = detectors.CannyEdgeDetector(
-            threshold1=canny_threshold1,
-            threshold2=canny_threshold2,
-            aperture_size=canny_aperture_size,
-            L2_gradient=canny_L2_gradient
-        )
-        canny_edges = canny_detector(image=img,
-                                     plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
-
-        # detect lines
-        line_detector = detectors.ProbabilisticHoughLinesDetector(
-            rho=1,
-            theta=np.pi / 180,
-            threshold=100,
-            min_line_length=hough_min_line_length,
-            max_line_gap=hough_max_line_gap
-        )
-        lines = line_detector(image=canny_edges)
-        
-        # define ocr engine
-        ocr_engine = detectors.TesseractOCR(
-            l=ocr_lang,
-            dpi=ocr_dpi,  # 300
-            psm=ocr_psm,  # 6
-            oem=ocr_oem,  # 1
-        )
-        table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
-        table_cell_ocr.vertical_lines = lines[0]
-        table_cell_ocr.horizontal_lines = lines[1]
-        texts = table_cell_ocr(
-            image=img,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH
-        )
-        return texts
-    
-    elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
-        # smooth image
-        gaussian_blur = preprocessors.GaussianImageSmoother(
-            border_type=preprocessors.CV2BorderTypes.DEFAULT
-        )
-        pre_img = gaussian_blur(image=img, kernel_size=smooth_kernel_size)
-
-        # binarize image
-        adaptive_thresh = preprocessors.GaussianAdaptiveThresholder(
-            max_value=255,
-            adaptive_method=preprocessors.CV2AdaptiveThresholdTypes.GAUSSIAN_C,
-            threshold_type=preprocessors.CV2ThresholdTypes.BINARY,
-        )
-        pre_img = adaptive_thresh(image=pre_img,
-                                  block_size=thresh_block_size,
-                                  constant=thresh_c,
-                                  plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
-
-        # make text blocks as solid blocks
-        dilater = preprocessors.Dilate(
-            morph_size=dilate_morph_size,
-        )
-        dilated_img = dilater(image=pre_img, iterations=dilation_iterations,
-                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
-        
-        # detect lines of table and cells
-        contour_line_detector = detectors.ContourLinesDetector(
-            cell_threshold=contour_line_cell_threshold,
-            min_columns=1,
-        )
-        vertical_lines, horizontal_lines = contour_line_detector(
-            image=dilated_img,
-            min_solid_height_limit=contour_min_solid_height_limit,
-            max_solid_height_limit=contour_max_solid_height_limit,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH
-        )
-
-        # define ocr engine
-        ocr_engine = detectors.TesseractOCR(
-            l=ocr_lang,
-            dpi=ocr_dpi,  # 150
-            psm=ocr_psm,  # 11
-            oem=ocr_oem,  # 1
-        )
-        table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
-        table_cell_ocr.vertical_lines = vertical_lines
-        table_cell_ocr.horizontal_lines = horizontal_lines
-        texts = table_cell_ocr(image=pre_img,
-                               roi_offset=roi_offset,
-                               lot=MLFLOW_ARTIFACTS_IMAGES_PATH)
-        return texts
-
-# build gradio interface given dataframe dtype
-inputs: List[gr.components.Component] = [
-    # input image
-    gr.Image(
-        label='The image that needs to be OCRed',
-    ), 
-    gr.Checkbox(
-        label='Single Column?',
-        value=True,
-    ),
-
-    # preprocessing for ML_FULL_TABLE
-    gr.Slider(
-        label='Canny threshold1',
-        minimum=0,
-        maximum=255,
-        step=5,
-        value=50,
-    ),
-    gr.Slider(
-        label='Canny threshold2',
-        minimum=0,
-        maximum=255,
-        step=5,
-        value=200,
-    ),
-    gr.Slider(
-        label='Canny aperture size',
-        minimum=3,
-        maximum=15,
-        step=2,
-        value=3,
-    ),
-    gr.Checkbox(
-        label='Canny L2 gradient',
-        value=False,
-    ),
-    gr.Number(
-        label='Hough lines minimum line length',
-        precision=0,
-        value=40,
-    ),
-    gr.Number(
-        label='Hough lines maximum line gap',
-        precision=0,
-        value=10,
-    ),
-
-    # preprocessing for ML_SINGLE_COLUMN_TABLE
-    gr.Slider(
-        label='Smoothing filter kernel size',
-        minimum=3,
-        maximum=15,
-        step=2,
-        value=3,
-    ),
-    gr.Slider(
-        label='Adaptive thresholding block size',
-        minimum=3,
-        maximum=21,
-        step=2,
-        value=11,
-    ),
-    gr.Slider(
-        label='Adaptive thresholding constant',
-        minimum=1,
-        maximum=10,
-        step=1,
-        value=5,
-    ),
-    gr.Slider(
-        label='Structuring element size of dilation',
-        minimum=1,
-        maximum=15,
-        step=2,
-        value=3,
-    ),
-    gr.Number(
-        label='Number of dilation iterations',
-        precision=0,
-        value=2,
-    ),
-    gr.Number(
-        label='Line cell threshold',
-        precision=0,
-        value=10,
-    ),
-    gr.Number(
-        label='Minimum cell height',
-        precision=0,
-        value=6,
-    ),
-    gr.Number(
-        label='Maximum cell height',
-        precision=0,
-        value=40,
-    ),
-    gr.Slider(
-        label='ROI offset (margin)',
-        minimum=0,
-        maximum=10,
-        step=1,
-        value=0,
-    ),
-
-    # common
-    gr.Textbox(
-        label='Languages',
-        value='eng',
-        lines=1,
-        max_lines=1,
-        placeholder='eng+fas+[LANG_3CHAR_CODE]',
-    ),
-    gr.Number(
-        label='OCR DPI',
-        precision=0,
-        value=150,
-    ),
-    gr.Dropdown(
-        label='OCR PSM',
-        choices=[
-            '3', '6', '11', '12'
-        ],
-        value='6',
-    ),
-    gr.Dropdown(
-        label='OCR PSM',
-        choices=[
-            '1', '2', '3', '4'
-        ],
-        value='1',
-    ),
-]
-
-
-# prediction probability output
-outputs: gr.components.Component = [
-    gr.Dataframe(
-        label='OCR output',
-        type='array',
-        max_rows=None,
-        max_cols=None,
-        wrap=True,
-    ),
-]
-
-title = 'TourTableOCR'
-description = 'OCRing weirdge tables'
 
 # close all Gradio instances
 gr.close_all()
-
 # launch gradio
-gr.Interface(
-    fn=predict,
-    inputs=inputs,
-    outputs=outputs,
-    title=title,
-    description=description,
-    flagging_dir='flags',
-    analytics_enabled=True,
-).launch(debug=True, enable_queue=True, server_port=7860)
+demo.launch(debug=True, enable_queue=True, server_port=7860)
+gr.close_all()
