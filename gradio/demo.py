@@ -91,6 +91,9 @@ with gr.Blocks() as demo:
                 label='Single Column?',
                 value=True,
             )
+            with gr.Row():
+                submit_btn = gr.Button('Submit')
+                flag_btn = gr.Button('Flag')
 
         with gr.Column():
             with gr.Column(visible=False) as gr_full_table_col:
@@ -232,11 +235,8 @@ with gr.Blocks() as demo:
                 max_rows=None,
                 max_cols=None,
                 wrap=True,
+                interactive=False,
             )
-    
-    with gr.Row():
-        submit_btn = gr.Button('Submit')
-        flag_btn = gr.Button('Flag')
 
     # predict on submit
     def predict(
