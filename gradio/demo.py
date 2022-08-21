@@ -63,6 +63,8 @@ for __l in __libs:
     __libs_logger.addHandler(stdout_stream_handler)
     __libs_logger.addHandler(stderr_stream_handler)
 
+callback = gr.CSVLogger()  # gradio 'flag' button logger
+
 # log experiment configs
 MLFLOW_EXPERIMENT_NAME = f'Gradio - {TTOCR_VERSION}'
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
@@ -231,8 +233,10 @@ with gr.Blocks() as demo:
                 max_cols=None,
                 wrap=True,
             )
-        
-    submit_btn = gr.Button("Submit")
+    
+    with gr.Row():
+        submit_btn = gr.Button("Submit")
+        flag_btn = gr.Button('Flag')
 
     # predict on submit
     def predict(
@@ -379,6 +383,7 @@ with gr.Blocks() as demo:
                                 lot=MLFLOW_ARTIFACTS_IMAGES_PATH)
             return texts
 
+
     # TODO: fix dynamic visual change based on single col or full table
     # # show/hide features given mode
     # def show_features(mode: bool) -> gr.components.Component:
@@ -418,8 +423,57 @@ with gr.Blocks() as demo:
         ],
     )
 
+    # add event to flag button
+    callback.setup(
+        components=[
+            gr_image, gr_mode,
+
+            gr_canny_threshold1, gr_canny_threshold2, 
+            canny_aperture_size, gr_canny_L2_gradient,
+            gr_hough_min_line_length, gr_hough_max_line_gap,
+
+            gr_smooth_kernel_size, gr_thresh_block_size,
+            gr_thresh_c, gr_dilate_morph_size, gr_dilation_iterations,
+            gr_contour_line_cell_threshold, gr_contour_min_solid_height_limit,
+            gr_contour_max_solid_height_limit, gr_roi_offset,
+
+            gr_ocr_lang, gr_ocr_dpi, gr_ocr_psm, gr_ocr_oem,
+
+            gr_ocr_output
+        ],
+        flagging_dir='artifacts/flags'
+        )
+    def flag_callback(*args):
+        f_ = callback.flag(args)
+        return f_
+    
+    flag_btn.click(
+        fn=flag_callback,
+        inputs=[
+            gr_image, gr_mode,
+
+            gr_canny_threshold1, gr_canny_threshold2, 
+            canny_aperture_size, gr_canny_L2_gradient,
+            gr_hough_min_line_length, gr_hough_max_line_gap,
+
+            gr_smooth_kernel_size, gr_thresh_block_size,
+            gr_thresh_c, gr_dilate_morph_size, gr_dilation_iterations,
+            gr_contour_line_cell_threshold, gr_contour_min_solid_height_limit,
+            gr_contour_max_solid_height_limit, gr_roi_offset,
+
+            gr_ocr_lang, gr_ocr_dpi, gr_ocr_psm, gr_ocr_oem,
+
+            gr_ocr_output],
+            outputs=None,
+            _preprocess=False
+        )
+
 # close all Gradio instances
 gr.close_all()
 # launch gradio
-demo.launch(debug=True, enable_queue=True, server_port=7860)
+demo.launch(debug=True,
+            enable_queue=True,
+            server_name='0.0.0.0',
+            server_port=7861)
+
 gr.close_all()
