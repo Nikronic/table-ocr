@@ -235,7 +235,7 @@ with gr.Blocks() as demo:
             )
     
     with gr.Row():
-        submit_btn = gr.Button("Submit")
+        submit_btn = gr.Button('Submit')
         flag_btn = gr.Button('Flag')
 
     # predict on submit
@@ -384,63 +384,33 @@ with gr.Blocks() as demo:
             return texts
 
 
-    # TODO: fix dynamic visual change based on single col or full table
-    # # show/hide features given mode
-    # def show_features(mode: bool) -> gr.components.Component:
-    #     if mode:
-    #         gr_full_table_col.update(visible=False)
-    #         gr_single_column_table_col.update(visible=True)
-    #     else:
-    #         gr_full_table_col.update(visible=True)
-    #         gr_single_column_table_col.update(visible=False)
-    #     return gr_mode
+    ALL_INPUT_COMPONENTS = [
+        gr_image, gr_mode,
 
-    # gr_mode.change(
-    #     fn=show_features,
-    #     inputs=gr_mode,
-    #     outputs=gr_full_table_col,
-    # )
+        gr_canny_threshold1, gr_canny_threshold2, 
+        canny_aperture_size, gr_canny_L2_gradient,
+        gr_hough_min_line_length, gr_hough_max_line_gap,
 
+        gr_smooth_kernel_size, gr_thresh_block_size,
+        gr_thresh_c, gr_dilate_morph_size, gr_dilation_iterations,
+        gr_contour_line_cell_threshold, gr_contour_min_solid_height_limit,
+        gr_contour_max_solid_height_limit, gr_roi_offset,
+
+        gr_ocr_lang, gr_ocr_dpi, gr_ocr_psm, gr_ocr_oem
+    ]
+    ALL_OUTPUT_COMPONENTS = [
+        gr_ocr_output
+    ]
     # add event to submit button
     submit_btn.click(
         fn=predict,
-        inputs=[
-            gr_image, gr_mode,
-
-            gr_canny_threshold1, gr_canny_threshold2, 
-            canny_aperture_size, gr_canny_L2_gradient,
-            gr_hough_min_line_length, gr_hough_max_line_gap,
-
-            gr_smooth_kernel_size, gr_thresh_block_size,
-            gr_thresh_c, gr_dilate_morph_size, gr_dilation_iterations,
-            gr_contour_line_cell_threshold, gr_contour_min_solid_height_limit,
-            gr_contour_max_solid_height_limit, gr_roi_offset,
-
-            gr_ocr_lang, gr_ocr_dpi, gr_ocr_psm, gr_ocr_oem
-        ],
-        outputs=[
-            gr_ocr_output
-        ],
+        inputs=ALL_INPUT_COMPONENTS,
+        outputs=ALL_OUTPUT_COMPONENTS,
     )
 
     # add event to flag button
     callback.setup(
-        components=[
-            gr_image, gr_mode,
-
-            gr_canny_threshold1, gr_canny_threshold2, 
-            canny_aperture_size, gr_canny_L2_gradient,
-            gr_hough_min_line_length, gr_hough_max_line_gap,
-
-            gr_smooth_kernel_size, gr_thresh_block_size,
-            gr_thresh_c, gr_dilate_morph_size, gr_dilation_iterations,
-            gr_contour_line_cell_threshold, gr_contour_min_solid_height_limit,
-            gr_contour_max_solid_height_limit, gr_roi_offset,
-
-            gr_ocr_lang, gr_ocr_dpi, gr_ocr_psm, gr_ocr_oem,
-
-            gr_ocr_output
-        ],
+        components=ALL_INPUT_COMPONENTS + ALL_OUTPUT_COMPONENTS,
         flagging_dir='artifacts/flags'
         )
     def flag_callback(*args):
@@ -450,23 +420,9 @@ with gr.Blocks() as demo:
     
     flag_btn.click(
         fn=flag_callback,
-        inputs=[
-            gr_image, gr_mode,
-
-            gr_canny_threshold1, gr_canny_threshold2, 
-            canny_aperture_size, gr_canny_L2_gradient,
-            gr_hough_min_line_length, gr_hough_max_line_gap,
-
-            gr_smooth_kernel_size, gr_thresh_block_size,
-            gr_thresh_c, gr_dilate_morph_size, gr_dilation_iterations,
-            gr_contour_line_cell_threshold, gr_contour_min_solid_height_limit,
-            gr_contour_max_solid_height_limit, gr_roi_offset,
-
-            gr_ocr_lang, gr_ocr_dpi, gr_ocr_psm, gr_ocr_oem,
-
-            gr_ocr_output],
-            outputs=None,
-            _preprocess=False
+        inputs=ALL_INPUT_COMPONENTS + ALL_OUTPUT_COMPONENTS,
+        outputs=None,
+        _preprocess=False
         )
 
 # close all Gradio instances
@@ -477,4 +433,5 @@ demo.launch(debug=False,
             server_port=7861,
             share=True)
 demo.integrate(mlflow=mlflow)
+# close all Gradio instances, again! pepega
 gr.close_all()
