@@ -30,4 +30,4 @@ The branch that is main focused on deep learning methods for parsing the images 
 1. Codes are adopted from and or heavily inspired by following open source heroes:
    1. Basic table https://github.com/fazlurnu/Text-Extraction-Table-Image.
    2. https://github.com/jiahuei/document-scanner-opencv-ws
-   3. 
+   3. Morph based table: https://stackoverflow.com/questions/50829874/how-to-find-table-like-structure-in-image
