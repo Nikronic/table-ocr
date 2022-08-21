@@ -445,6 +445,7 @@ with gr.Blocks() as demo:
         )
     def flag_callback(*args):
         f_ = callback.flag(args)
+        mlflow.log_artifacts(MLFLOW_ARTIFACTS_PATH)
         return f_
     
     flag_btn.click(
@@ -471,9 +472,9 @@ with gr.Blocks() as demo:
 # close all Gradio instances
 gr.close_all()
 # launch gradio
-demo.launch(debug=True,
-            enable_queue=True,
+demo.launch(debug=False,
             server_name='0.0.0.0',
-            server_port=7861)
-
+            server_port=7861,
+            share=True)
+demo.integrate(mlflow=mlflow)
 gr.close_all()
