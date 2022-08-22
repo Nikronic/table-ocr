@@ -33,7 +33,27 @@ class Detector:
             logger.name+'.'+self.__class__.__name__)
 
     def _get_class_attributes(self) -> dict:
-        return dict(self.__dict__)
+        """Attributes of the class that are configs of an operation
+
+        Notes:
+            This is used for logging the configs since they need to be manually 
+            tuned or experimented with. I.e. for the same input, we might run
+            this class (and the operation it implemented) multiple times with
+            different configs to find the best config by human oracle verification.
+            Hence, keeping the configs of each run even inside a single experiment is
+            highly desired.
+
+        Returns:
+            dict: A dictionary of each parameter and its value
+        """
+        class_attributes: dict = dict(self.__dict__)
+        # pop out logging instances
+        d: dict = {}
+        for k, v in class_attributes.items():
+            if not isinstance(v, logging.Logger):
+                d[k] = v
+        class_attributes = d
+        return class_attributes
 
     def _log(self, *args, **kwargs):
         raise NotImplementedError
