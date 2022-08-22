@@ -22,15 +22,48 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class ImageColorConverter:
-    """Convert image color space
+class PreprocessorBase:
+    def __init__(self) -> None:
+        self.logger = logging.getLogger(
+            logger.name+'.'+self.__class__.__name__)
 
+    def _log(self, *args, **kwargs):
+        raise NotImplementedError
+    
+    def _get_class_attributes(self) -> dict:
+        """Attributes of the class that are configs of an operation
+
+        Notes:
+            This is used for logging the configs since they need to be manually 
+            tuned or experimented with. I.e. for the same input, we might run
+            this class (and the operation it implemented) multiple times with
+            different configs to find the best config by human oracle verification.
+            Hence, keeping the configs of each run even inside a single experiment is
+            highly desired.
+
+        Returns:
+            dict: A dictionary of each parameter and its value
+        """
+        class_attributes: dict = dict(self.__dict__)
+        # pop out logging instances and hidden attributes (ie. start with "_")
+        d: dict = {}
+        for k, v in class_attributes.items():
+            if (not isinstance(v, logging.Logger)) and (not k.startswith('_')):
+                d[k] = v
+            
+        class_attributes = d
+        return class_attributes
+    
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+
+class ImageColorConverter(PreprocessorBase):
+    """Convert image color space
     """
 
     def __init__(self, mode: Any) -> None:
-        self.logger = logging.getLogger(
-            logger.name+'.'+self.__class__.__name__)
-        
+        super().__init__()
         self.mode = mode
 
     def __validate_mode(self, mode: Any) -> None:
@@ -39,13 +72,6 @@ class ImageColorConverter:
         Args:
             mode (Any): mode to verify
         """
-        raise NotImplementedError
-
-    def __log(self):
-        raise NotImplementedError
-
-    def __call__(self, image: np.ndarray,
-                 *args, **kwargs) -> np.ndarray:
         raise NotImplementedError
 
 
@@ -120,7 +146,7 @@ class CV2ImageColorConverter(ImageColorConverter):
         return cv2.cvtColor(image, self.mode.value, *args, **kwargs)
 
 
-class ImageSmoother:
+class ImageSmoother(PreprocessorBase):
     """Abstract class for implementing different smoothing methods
     """
 
@@ -130,12 +156,8 @@ class ImageSmoother:
         Args:
             kernel_size (int): kernel size for smoothing
         """
-        self.logger = logging.getLogger(
-            logger.name+'.'+self.__class__.__name__)
+        super().__init__()
         self.kernel_size = kernel_size
-    
-    def _get_class_attributes(self) -> dict:
-        return dict(self.__dict__)
     
     def _log(self, *args, **kwargs):
         self.logger.info(
@@ -226,18 +248,14 @@ class GaussianImageSmoother(ImageSmoother):
         return smoothed
 
 
-class ImageThresholder:
+class ImageThresholder(PreprocessorBase):
     """Abstract class for implementing different thresholding methods
     """
 
     def __init__(self) -> None:
         """Initialize ``ImageThresholder``
         """
-        self.logger = logging.getLogger(
-            logger.name+'.'+self.__class__.__name__)
-
-    def _get_class_attributes(self) -> dict:
-        return dict(self.__dict__)
+        super().__init__()
     
     def _log(self, *args, **kwargs):
         self.logger.info(
@@ -451,18 +469,14 @@ class OtsuThresholder(ImageThresholder):
         return thresholded
 
 
-class MorphologicalOperator:
+class MorphologicalOperator(PreprocessorBase):
     """Abstract class for implementing different morphological operations
     """
 
     def __init__(self) -> None:
         """Initialize ``MorphologicalOperator``
         """
-        self.logger = logging.getLogger(
-            logger.name+'.'+self.__class__.__name__)
-
-    def _get_class_attributes(self) -> dict:
-        return dict(self.__dict__)
+        super().__init__()
     
     def _log(self, *args, **kwargs):
         self.logger.info(

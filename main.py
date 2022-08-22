@@ -70,7 +70,7 @@ if __name__ == '__main__':
         __libs_logger.addHandler(stderr_stream_handler)
 
     # log experiment configs
-    MLFLOW_EXPERIMENT_NAME = f'Morphology - Sole column - {TTOCR_VERSION}'
+    MLFLOW_EXPERIMENT_NAME = f'Fix#5 - {TTOCR_VERSION}'
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     MLFLOW_TAGS = {
         'stage': 'dev'  # dev, beta, production

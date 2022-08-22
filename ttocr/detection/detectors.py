@@ -13,7 +13,7 @@ import cv2
 # ours: helpers
 from ttocr.utils import visualizers
 # helpers
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple, Union, Any
 import matplotlib.pyplot as plt
 from pathlib import Path
 from enum import Enum
@@ -24,16 +24,48 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class Detector:
-    """Base class for all detectors such as edge and line detectors
-    """
-
+class DetectorBase:
     def __init__(self) -> None:
         self.logger = logging.getLogger(
             logger.name+'.'+self.__class__.__name__)
 
+    def _log(self, *args, **kwargs):
+        raise NotImplementedError
+    
     def _get_class_attributes(self) -> dict:
-        return dict(self.__dict__)
+        """Attributes of the class that are configs of an operation
+
+        Notes:
+            This is used for logging the configs since they need to be manually 
+            tuned or experimented with. I.e. for the same input, we might run
+            this class (and the operation it implemented) multiple times with
+            different configs to find the best config by human oracle verification.
+            Hence, keeping the configs of each run even inside a single experiment is
+            highly desired.
+
+        Returns:
+            dict: A dictionary of each parameter and its value
+        """
+        class_attributes: dict = dict(self.__dict__)
+        # pop out logging instances and hidden attributes (ie. start with "_")
+        d: dict = {}
+        for k, v in class_attributes.items():
+            if (not isinstance(v, logging.Logger)) and (not k.startswith('_')):
+                d[k] = v
+            
+        class_attributes = d
+        return class_attributes
+    
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+
+class Detector(DetectorBase):
+    """Base class for all detectors such as edge and line detectors
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
 
     def _log(self, *args, **kwargs):
         raise NotImplementedError
