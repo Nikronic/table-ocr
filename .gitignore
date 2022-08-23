@@ -69,3 +69,6 @@ mlruns
 
 # gradio
 gradio/flags
+
+# fastapi
+test_sample
