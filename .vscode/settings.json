@@ -1,11 +1,14 @@
 {
     "cSpell.words": [
         "CONFIGFILE",
+        "contentype",
         "facecolor",
         "fontdict",
         "frombuffer",
         "hspace",
+        "imdecode",
         "imread",
+        "jsonable",
         "ocred",
         "OTSU",
         "savefig",
