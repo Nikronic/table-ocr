@@ -1,14 +1,32 @@
 # core
 import pydantic
+import json
 # helpers
-from typing import List
+from typing import List, Any
 
 
-class PredictionResponse(pydantic.BaseModel):
+class BaseModel(pydantic.BaseModel):
+    """
+    Reference:
+        * https://stackoverflow.com/a/70640522/18971263
+    """
+    def __init__(__pydantic_self__, **data: Any) -> None:
+        super().__init__(**data)
+
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate_to_json
+
+    @classmethod
+    def validate_to_json(cls, value):
+        if isinstance(value, str):
+            return cls(**json.loads(value))
+        return value
+
+class PredictionResponse(BaseModel):
     ocr_result: List[List[str]]
 
-class Payload(pydantic.BaseModel):
-    file: str = ''
+class Payload(BaseModel):
     mode: bool = True
 
     # preprocessing for ML_TABLE

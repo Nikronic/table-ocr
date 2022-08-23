@@ -10,8 +10,6 @@ from ttocr.api import models as api_models
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
 import fastapi
-import uvicorn
-import base64
 # devops
 import mlflow
 # helpers
@@ -234,16 +232,17 @@ app = fastapi.FastAPI()
 @app.post("/predict/", response_model=api_models.PredictionResponse)
 async def predict(
     conf: api_models.Payload,
+    file: fastapi.UploadFile = fastapi.File(...)
     ):
-    # if file.content_type.startswith('image/') is False:
-    #     raise fastapi.HTTPException(
-    #         status_code=400,
-    #         detail=f'File \'{file.filename}\' is not an image.')    
+    if file.content_type.startswith('image/') is False:
+        raise fastapi.HTTPException(
+            status_code=400,
+            detail=f'File \'{file.filename}\' is not an image.')    
 
     try:
-        # contents = await file.read()
+        contents = await file.read()
         image = cv2.imdecode(
-            np.frombuffer(base64.b64decode(conf.file), np.uint8),
+            np.frombuffer(contents, np.uint8),
             cv2.IMREAD_COLOR
         )
         ocr_result = _predict(
