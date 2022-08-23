@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 
 url = 'http://127.0.0.1:8000/flag'
-example_image = Path('s.png')
+example_image = Path('test_sample/s.png')
 files = {
     # 'filename': example_image.as_posix(),
     'file': (example_image.as_posix(),
