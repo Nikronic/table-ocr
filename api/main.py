@@ -10,10 +10,11 @@ from ttocr.api import models as api_models
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
 import fastapi
+import uvicorn
 # devops
 import mlflow
 # helpers
-from typing import List
+from typing import List, Optional
 from pathlib import Path
 import shutil
 import logging
@@ -114,8 +115,11 @@ def _predict(
     ocr_psm: int = 6,
     ocr_oem: int = 1,
 
-
+    flag: bool = False
 ) -> List[str]:
+    # output
+    texts: Optional[List[List[str]]] = None
+
     # convert gradio interface type to ttocr type
     ocr_psm = int(ocr_psm)
     ocr_oem = int(ocr_oem)
@@ -143,8 +147,10 @@ def _predict(
             aperture_size=canny_aperture_size,
             L2_gradient=canny_L2_gradient
         )
-        canny_edges = canny_detector(image=img,
-                                    plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+        canny_edges = canny_detector(
+            image=img,
+            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+        )
 
         # detect lines
         line_detector = detectors.ProbabilisticHoughLinesDetector(
@@ -168,9 +174,8 @@ def _predict(
         table_cell_ocr.horizontal_lines = lines[1]
         texts = table_cell_ocr(
             image=img,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH
+            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
-        return texts
     
     elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
         # smooth image
@@ -185,17 +190,21 @@ def _predict(
             adaptive_method=preprocessors.CV2AdaptiveThresholdTypes.GAUSSIAN_C,
             threshold_type=preprocessors.CV2ThresholdTypes.BINARY,
         )
-        pre_img = adaptive_thresh(image=pre_img,
-                                block_size=thresh_block_size,
-                                constant=thresh_c,
-                                plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+        pre_img = adaptive_thresh(
+            image=pre_img,
+            block_size=thresh_block_size,
+            constant=thresh_c,
+            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+        )
 
         # make text blocks as solid blocks
         dilater = preprocessors.Dilate(
             morph_size=dilate_morph_size,
         )
-        dilated_img = dilater(image=pre_img, iterations=dilation_iterations,
-                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+        dilated_img = dilater(
+            image=pre_img,
+            iterations=dilation_iterations,
+            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None)
         
         # detect lines of table and cells
         contour_line_detector = detectors.ContourLinesDetector(
@@ -206,7 +215,7 @@ def _predict(
             image=dilated_img,
             min_solid_height_limit=contour_min_solid_height_limit,
             max_solid_height_limit=contour_max_solid_height_limit,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH
+            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
 
         # define ocr engine
@@ -219,10 +228,16 @@ def _predict(
         table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
         table_cell_ocr.vertical_lines = vertical_lines
         table_cell_ocr.horizontal_lines = horizontal_lines
-        texts = table_cell_ocr(image=pre_img,
-                            roi_offset=roi_offset,
-                            lot=MLFLOW_ARTIFACTS_IMAGES_PATH)
-        return texts
+        texts = table_cell_ocr(
+            image=pre_img,
+            roi_offset=roi_offset,
+            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+        )
+    # if need to be flagged, save as artifact
+    if flag:
+        logger.info(f'artifacts saved in MLflow artifacts directory.')
+        mlflow.log_artifacts(MLFLOW_ARTIFACTS_PATH)
+    return texts
 
 
 # instantiate fast api app
@@ -278,6 +293,7 @@ async def predict(
             ocr_dpi=conf.ocr_dpi,
             ocr_psm=conf.ocr_psm,
             ocr_oem=conf.ocr_oem,
+            flag=False
         )
         
         logger.info('OCR finished')
@@ -289,3 +305,66 @@ async def predict(
         e = sys.exc_info()[1]
         raise fastapi.HTTPException(status_code=500, detail=str(e))
 
+@app.post("/flag/", response_model=api_models.PredictionResponse)
+async def flag(
+    conf: api_models.Payload,
+    file: fastapi.UploadFile = fastapi.File(...)
+    ):
+    if file.content_type.startswith('image/') is False:
+        raise fastapi.HTTPException(
+            status_code=400,
+            detail=f'File \'{file.filename}\' is not an image.')    
+
+    try:
+        contents = await file.read()
+        image = cv2.imdecode(
+            np.frombuffer(contents, np.uint8),
+            cv2.IMREAD_COLOR
+        )
+        ocr_result = _predict(
+            image=image,
+            mode=conf.mode,
+
+            # preprocessing for ML_TABLE
+            canny_threshold1=conf.canny_threshold1,
+            canny_threshold2=conf.canny_threshold2,
+            canny_aperture_size=conf.canny_aperture_size,
+            canny_L2_gradient=conf.canny_L2_gradient,
+
+            hough_min_line_length=conf.hough_min_line_length,
+            hough_max_line_gap=conf.hough_max_line_gap,
+
+            # preprocessing for ML_SINGLE_COLUMN_TABLE
+            smooth_kernel_size=conf.smooth_kernel_size,
+
+            thresh_block_size=conf.thresh_block_size,
+            thresh_c=conf.thresh_c,
+
+            dilate_morph_size=conf.dilate_morph_size,
+            dilation_iterations=conf.dilation_iterations,
+
+            contour_line_cell_threshold=conf.contour_line_cell_threshold,
+            contour_min_solid_height_limit=conf.contour_min_solid_height_limit,
+            contour_max_solid_height_limit=conf.contour_max_solid_height_limit,
+
+            roi_offset=conf.roi_offset,
+
+            # common
+            ocr_lang=conf.ocr_lang,
+            ocr_dpi=conf.ocr_dpi,
+            ocr_psm=conf.ocr_psm,
+            ocr_oem=conf.ocr_oem,
+            flag=True
+        )
+        
+        logger.info('OCR finished')
+        return {
+            'ocr_result': ocr_result,
+        }
+    except Exception as error:
+        logging.exception(error)
+        e = sys.exc_info()[1]
+        raise fastapi.HTTPException(status_code=500, detail=str(e))
+
+if __name__ == '__main__':
+    uvicorn.run(app=app, host='0.0.0.0', port=8000, debug=True)
