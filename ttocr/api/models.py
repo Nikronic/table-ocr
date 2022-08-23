@@ -15,13 +15,13 @@ class BaseModel(pydantic.BaseModel):
 
     @classmethod
     def __get_validators__(cls):
-        yield cls.validate_to_json
-
+        yield cls._validate_from_json_string
+    
     @classmethod
-    def validate_to_json(cls, value):
+    def _validate_from_json_string(cls, value): 
         if isinstance(value, str):
-            return cls(**json.loads(value))
-        return value
+            return cls.validate(json.loads(value.encode()))
+        return cls.validate(value)
 
 class PredictionResponse(BaseModel):
     ocr_result: List[List[str]]
