@@ -67,7 +67,7 @@ for __l in __libs:
     __libs_logger.addHandler(stderr_stream_handler)
 
 # log experiment configs
-MLFLOW_EXPERIMENT_NAME = f'FastAPI service - {TTOCR_VERSION}'
+MLFLOW_EXPERIMENT_NAME = f'Fix#12 - {TTOCR_VERSION}'
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 MLFLOW_TAGS = {
     'stage': 'beta'  # dev, beta, production
@@ -172,10 +172,12 @@ def _predict(
         table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
         table_cell_ocr.vertical_lines = lines[0]
         table_cell_ocr.horizontal_lines = lines[1]
-        texts = table_cell_ocr(
+        result = table_cell_ocr(
             image=img,
             plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
+        # drop annotation of OCRed image in debug mode (2nd element is image)
+        texts = result[0] if flag else result
     
     elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
         # smooth image
@@ -228,11 +230,13 @@ def _predict(
         table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
         table_cell_ocr.vertical_lines = vertical_lines
         table_cell_ocr.horizontal_lines = horizontal_lines
-        texts = table_cell_ocr(
+        result = table_cell_ocr(
             image=pre_img,
             roi_offset=roi_offset,
             plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
+        # drop annotation of OCRed image in debug mode (2nd element is image)
+        texts = result[0] if flag else result
     # if need to be flagged, save as artifact
     if flag:
         logger.info(f'artifacts saved in MLflow artifacts directory.')
