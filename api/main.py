@@ -67,7 +67,7 @@ for __l in __libs:
     __libs_logger.addHandler(stderr_stream_handler)
 
 # log experiment configs
-MLFLOW_EXPERIMENT_NAME = f'Fix#12 - {TTOCR_VERSION}'
+MLFLOW_EXPERIMENT_NAME = f'Fix#13 - {TTOCR_VERSION}'
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 MLFLOW_TAGS = {
     'stage': 'beta'  # dev, beta, production
@@ -371,4 +371,5 @@ async def flag(
         raise fastapi.HTTPException(status_code=500, detail=str(e))
 
 if __name__ == '__main__':
+    # REMARK: use gunicorn in production, i.e. do `bash gunicorn-server.sh`
     uvicorn.run(app=app, host='0.0.0.0', port=8000, debug=True)
