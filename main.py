@@ -6,6 +6,7 @@ from ttocr.data import preprocessors
 # ours: detection
 from ttocr.detection import DetectionMode
 from ttocr.detection import detectors
+from ttocr.utils import loggers
 # ours: utils
 from ttocr.version import VERSION as TTOCR_VERSION
 # devops
@@ -29,48 +30,20 @@ if __name__ == '__main__':
     mlflow.set_tracking_uri('http://localhost:5000')
 
     # configure logging
-    logger = logging.getLogger(__name__)
-    logger.setLevel(VERBOSE)
-    logger_formatter = logging.Formatter(
-        "[%(name)s: %(asctime)s] {%(lineno)d} %(levelname)s - %(message)s", "%m-%d %H:%M:%S"
-    )
-
-    # setup dirs for mlflow artifacts (logs, configs, etc)
-    MLFLOW_ARTIFACTS_PATH = Path('artifacts')
-    MLFLOW_ARTIFACTS_LOGS_PATH = MLFLOW_ARTIFACTS_PATH / 'logs'
-    MLFLOW_ARTIFACTS_CONFIGS_PATH = MLFLOW_ARTIFACTS_PATH / 'configs'
-    MLFLOW_ARTIFACTS_IMAGES_PATH = MLFLOW_ARTIFACTS_PATH / 'images'
-    if MLFLOW_ARTIFACTS_PATH.exists():
-        shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
-    if not MLFLOW_ARTIFACTS_PATH.exists():
-        MLFLOW_ARTIFACTS_PATH.mkdir(parents=True)
-        MLFLOW_ARTIFACTS_LOGS_PATH.mkdir(parents=True)
-        MLFLOW_ARTIFACTS_CONFIGS_PATH.mkdir(parents=True)
-        MLFLOW_ARTIFACTS_IMAGES_PATH.mkdir(parents=True)
-    
-    # Set up root logger, and add a file handler to root logger
-    logger_handler = logging.FileHandler(filename=MLFLOW_ARTIFACTS_LOGS_PATH / 'main.log',
-                                         mode='w')
-    stdout_stream_handler = logging.StreamHandler(stream=sys.stdout)
-    stderr_stream_handler = logging.StreamHandler(stream=sys.stderr)
-    logger_handler.setFormatter(logger_formatter)
-    stdout_stream_handler.setFormatter(logger_formatter)
-    stderr_stream_handler.setFormatter(logger_formatter)
-    logger.addHandler(logger_handler)  # type: ignore
-    logger.addHandler(stdout_stream_handler)
-    logger.addHandler(stderr_stream_handler)
-
-    # set libs to log to our logging config
+    VERBOSE = logging.DEBUG
+    MLFLOW_ARTIFACTS_BASE_PATH: Path = Path('artifacts')
+    if MLFLOW_ARTIFACTS_BASE_PATH.exists():
+        shutil.rmtree(MLFLOW_ARTIFACTS_BASE_PATH)
     __libs = ['ttocr']
-    for __l in __libs:
-        __libs_logger = logging.getLogger(__l)
-        __libs_logger.setLevel(VERBOSE)
-        __libs_logger.addHandler(logger_handler)
-        __libs_logger.addHandler(stdout_stream_handler)
-        __libs_logger.addHandler(stderr_stream_handler)
+    logger = loggers.Logger(
+        name=__name__,
+        level=VERBOSE,
+        mlflow_artifacts_base_path=MLFLOW_ARTIFACTS_BASE_PATH,
+        libs=__libs
+)
 
     # log experiment configs
-    MLFLOW_EXPERIMENT_NAME = f'Fix#5 - {TTOCR_VERSION}'
+    MLFLOW_EXPERIMENT_NAME = f'Fix#8 - {TTOCR_VERSION}'
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     MLFLOW_TAGS = {
         'stage': 'dev'  # dev, beta, production
@@ -81,6 +54,9 @@ if __name__ == '__main__':
     logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
 
     try:
+        # create mlflow artifact instance for each run
+        logger.create_artifact_instance()
+
         # choose table detection method
         DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
         logger.info(f'Detection mode: {DETECTION_MODE}')
@@ -107,8 +83,10 @@ if __name__ == '__main__':
                 aperture_size=3,
                 L2_gradient=False
             )
-            canny_edges = canny_detector(image=img,
-                                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            canny_edges = canny_detector(
+                image=img,
+                plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
 
             # detect lines
             line_detector = detectors.ProbabilisticHoughLinesDetector(
@@ -130,8 +108,10 @@ if __name__ == '__main__':
             table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
             table_cell_ocr.vertical_lines = lines[0]
             table_cell_ocr.horizontal_lines = lines[1]
-            table_cell_ocr(image=img,
-                        plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            table_cell_ocr(
+                image=img,
+                plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
         
         elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
             # smooth image
@@ -146,15 +126,22 @@ if __name__ == '__main__':
                 adaptive_method=preprocessors.CV2AdaptiveThresholdTypes.GAUSSIAN_C,
                 threshold_type=preprocessors.CV2ThresholdTypes.BINARY,
             )
-            pre_img = adaptive_thresh(image=pre_img, block_size=11, constant=5,
-                                  plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            pre_img = adaptive_thresh(
+                image=pre_img,
+                block_size=11,
+                constant=5,
+                plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
 
             # make text blocks as solid blocks
             dilater = preprocessors.Dilate(
                 morph_size=3,
             )
-            dilated_img = dilater(image=pre_img, iterations=3,
-                          plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            dilated_img = dilater(
+                image=pre_img,
+                iterations=3,
+                plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH
+            )
             
             # detect lines of table and cells
             contour_line_detector = detectors.ContourLinesDetector(
@@ -165,7 +152,7 @@ if __name__ == '__main__':
                 image=dilated_img,
                 min_solid_height_limit=6,
                 max_solid_height_limit=40,
-                plot=MLFLOW_ARTIFACTS_IMAGES_PATH
+                plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH
             )
 
             # define ocr engine
@@ -178,9 +165,10 @@ if __name__ == '__main__':
             table_cell_ocr = detectors.TableCellDetector(ocr=ocr_engine)
             table_cell_ocr.vertical_lines = vertical_lines
             table_cell_ocr.horizontal_lines = horizontal_lines
-            table_cell_ocr(image=pre_img,
-                           roi_offset=0,
-                           plot=MLFLOW_ARTIFACTS_IMAGES_PATH)
+            table_cell_ocr(
+                image=pre_img,
+                roi_offset=0,
+                plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH)
 
     except Exception as e:
         logger.exception(e)
@@ -189,7 +177,7 @@ if __name__ == '__main__':
     # cleanup code
     finally:
         # log artifacts (logs, saved files, etc)
-        mlflow.log_artifacts(MLFLOW_ARTIFACTS_PATH)
+        mlflow.log_artifacts(MLFLOW_ARTIFACTS_BASE_PATH)
         # delete redundant logs, files that are logged as artifact
-        shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
+        shutil.rmtree(MLFLOW_ARTIFACTS_BASE_PATH)
     

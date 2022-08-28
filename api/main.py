@@ -6,6 +6,7 @@ from ttocr.data import io
 from ttocr.data import preprocessors
 from ttocr.detection import detectors
 from ttocr.detection import DetectionMode
+from ttocr.utils import loggers
 from ttocr.api import models as api_models
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
@@ -23,51 +24,22 @@ import sys
 
 # configure logging
 VERBOSE = logging.DEBUG
-logger = logging.getLogger(__name__)
-logger.setLevel(VERBOSE)
-logger_formatter = logging.Formatter(
-    "[%(name)s: %(asctime)s] {%(lineno)d} %(levelname)s - %(message)s", "%m-%d %H:%M:%S"
-)
-
-# setup dirs for mlflow artifacts (logs, configs, etc)
-mlflow.set_tracking_uri('http://localhost:5000')
-MLFLOW_ARTIFACTS_PATH = Path('artifacts')
-MLFLOW_ARTIFACTS_LOGS_PATH = MLFLOW_ARTIFACTS_PATH / 'logs'
-MLFLOW_ARTIFACTS_CONFIGS_PATH = MLFLOW_ARTIFACTS_PATH / 'configs'
-MLFLOW_ARTIFACTS_IMAGES_PATH = MLFLOW_ARTIFACTS_PATH / 'images'
-if MLFLOW_ARTIFACTS_PATH.exists():
-    shutil.rmtree(MLFLOW_ARTIFACTS_PATH)
-if not MLFLOW_ARTIFACTS_PATH.exists():
-    MLFLOW_ARTIFACTS_PATH.mkdir(parents=True)
-    MLFLOW_ARTIFACTS_LOGS_PATH.mkdir(parents=True)
-    MLFLOW_ARTIFACTS_CONFIGS_PATH.mkdir(parents=True)
-    MLFLOW_ARTIFACTS_IMAGES_PATH.mkdir(parents=True)
-
-# Set up root logger, and add a file handler to root logger
-logger_handler = logging.FileHandler(
-    filename=MLFLOW_ARTIFACTS_LOGS_PATH / 'main.log',
-    mode='w'
-)
-stdout_stream_handler = logging.StreamHandler(stream=sys.stdout)
-stderr_stream_handler = logging.StreamHandler(stream=sys.stderr)
-logger_handler.setFormatter(logger_formatter)
-stdout_stream_handler.setFormatter(logger_formatter)
-stderr_stream_handler.setFormatter(logger_formatter)
-logger.addHandler(logger_handler)  # type: ignore
-logger.addHandler(stdout_stream_handler)
-logger.addHandler(stderr_stream_handler)
-
-# set libs to log to our logging config
+MLFLOW_ARTIFACTS_BASE_PATH: Path = Path('artifacts')
+if MLFLOW_ARTIFACTS_BASE_PATH.exists():
+    shutil.rmtree(MLFLOW_ARTIFACTS_BASE_PATH)
 __libs = ['ttocr']
-for __l in __libs:
-    __libs_logger = logging.getLogger(__l)
-    __libs_logger.setLevel(VERBOSE)
-    __libs_logger.addHandler(logger_handler)
-    __libs_logger.addHandler(stdout_stream_handler)
-    __libs_logger.addHandler(stderr_stream_handler)
+logger = loggers.Logger(
+    name=__name__,
+    level=VERBOSE,
+    mlflow_artifacts_base_path=MLFLOW_ARTIFACTS_BASE_PATH,
+    libs=__libs
+)
+
+# run mlflow tracking server
+mlflow.set_tracking_uri('http://localhost:5000')
 
 # log experiment configs
-MLFLOW_EXPERIMENT_NAME = f'Fix#13 - {TTOCR_VERSION}'
+MLFLOW_EXPERIMENT_NAME = f'Fix#8 - {TTOCR_VERSION}'
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
 MLFLOW_TAGS = {
     'stage': 'beta'  # dev, beta, production
@@ -76,9 +48,6 @@ mlflow.set_tags(MLFLOW_TAGS)
 
 logger.info(f'MLflow experiment name: {MLFLOW_EXPERIMENT_NAME}')
 logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
-
-title = 'TourTableOCR'
-description = 'OCRing weirdge tables'
 
 # predict on submit
 def _predict(
@@ -149,7 +118,7 @@ def _predict(
         )
         canny_edges = canny_detector(
             image=img,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+            plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
 
         # detect lines
@@ -174,7 +143,7 @@ def _predict(
         table_cell_ocr.horizontal_lines = lines[1]
         result = table_cell_ocr(
             image=img,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+            plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
         # drop annotation of OCRed image in debug mode (2nd element is image)
         texts = result[0] if flag else result
@@ -196,7 +165,7 @@ def _predict(
             image=pre_img,
             block_size=thresh_block_size,
             constant=thresh_c,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+            plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
 
         # make text blocks as solid blocks
@@ -206,7 +175,7 @@ def _predict(
         dilated_img = dilater(
             image=pre_img,
             iterations=dilation_iterations,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None)
+            plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None)
         
         # detect lines of table and cells
         contour_line_detector = detectors.ContourLinesDetector(
@@ -217,7 +186,7 @@ def _predict(
             image=dilated_img,
             min_solid_height_limit=contour_min_solid_height_limit,
             max_solid_height_limit=contour_max_solid_height_limit,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+            plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
 
         # define ocr engine
@@ -233,16 +202,15 @@ def _predict(
         result = table_cell_ocr(
             image=pre_img,
             roi_offset=roi_offset,
-            plot=MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
+            plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None
         )
         # drop annotation of OCRed image in debug mode (2nd element is image)
         texts = result[0] if flag else result
     # if need to be flagged, save as artifact
     if flag:
         logger.info(f'artifacts saved in MLflow artifacts directory.')
-        mlflow.log_artifacts(MLFLOW_ARTIFACTS_PATH)
+        mlflow.log_artifacts(MLFLOW_ARTIFACTS_BASE_PATH)
     return texts
-
 
 # instantiate fast api app
 app = fastapi.FastAPI()
@@ -317,7 +285,10 @@ async def flag(
     if file.content_type.startswith('image/') is False:
         raise fastapi.HTTPException(
             status_code=400,
-            detail=f'File \'{file.filename}\' is not an image.')    
+            detail=f'File \'{file.filename}\' is not an image.')
+        
+    # create new instance of mlflow artifact
+    logger.create_artifact_instance()
 
     try:
         contents = await file.read()
