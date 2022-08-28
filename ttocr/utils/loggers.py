@@ -13,6 +13,8 @@ import sys
 
 class LoggingLevels(Enum):
     """Logging levels from ``logging``
+
+    Just a clone of `logging` levels for our internal use, do not expose to user. 
     """
 
     CRITICAL = 50
@@ -60,7 +62,9 @@ class Logger(logging.Logger):
                 __libs_logger.addHandler(stdout_stream_handler)
                 __libs_logger.addHandler(stderr_stream_handler)
                 self.libs_logger.append(__libs_logger)
-
+        
+        # hold `*.log` handlers so we can delete it on each new artifact creation
+        self.__prev_handler: Optional[logging.Handler] = None
         
     @property
     def mlflow_artifacts_base_path(self) -> Path:
@@ -120,6 +124,17 @@ class Logger(logging.Logger):
         self.MLFLOW_ARTIFACTS_LOGS_PATH = MLFLOW_ARTIFACTS_LOGS_PATH
         self.MLFLOW_ARTIFACTS_CONFIGS_PATH = MLFLOW_ARTIFACTS_CONFIGS_PATH
         self.MLFLOW_ARTIFACTS_IMAGES_PATH = MLFLOW_ARTIFACTS_IMAGES_PATH
+
+    def _remove_previous_handlers(self) -> None:
+        """This is used to remove file related handlers on each new run of :meth:`create_artifact_instance`
+
+        Notes:
+            Do not forget to remove file handler from all libs, here, :attr:`libs_logger`
+        """
+        if self.__prev_handler is not None:
+            self.removeHandler(self.__prev_handler)
+            for lib_log in self.libs_logger:
+                lib_log.removeHandler(self.__prev_handler)
         
     def create_artifact_instance(
             self,
@@ -139,8 +154,10 @@ class Logger(logging.Logger):
             ``artifact_name`` as its sub directory. If None, we use an internal
             counter and use natural numbers increasing each time this method is called.
         """
+        # if prev handler exits, remove it
+        self._remove_previous_handlers()
 
-        # check if artifact_name is provided
+        # check if artifact_name is provided, if not, count calls to this method
         if artifact_name is None:
             artifact_name = f'{self._artifact_name}'
             self._artifact_name += 1
@@ -155,7 +172,9 @@ class Logger(logging.Logger):
         )
         logger_handler.setFormatter(self.logger_formatter)
         self.addHandler(logger_handler)
-
         # redirect libs main logger to our main
         for lib_log in self.libs_logger:
             lib_log.addHandler(logger_handler)
+        
+        # keep last handler so we can remove it on next call
+        self.__prev_handler = logger_handler
