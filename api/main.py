@@ -11,13 +11,12 @@ from ttocr.api import models as api_models
 from ttocr.api import apps as api_apps
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
-from gunicorn.app.base import BaseApplication
 import fastapi
 import uvicorn
 # devops
 import mlflow
 # helpers
-from typing import Callable, List, Optional
+from typing import List, Optional
 from pathlib import Path
 import argparse
 import shutil
@@ -76,6 +75,7 @@ if args.experiment_name == '':
 else:
     MLFLOW_EXPERIMENT_NAME = f'{args.experiment_name} - {TTOCR_VERSION}'
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
+mlflow.start_run()
 
 logger.info(f'MLflow experiment name: {MLFLOW_EXPERIMENT_NAME}')
 logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
