@@ -11,6 +11,14 @@
             "cwd": "${workspaceFolder}/api/",
             "program": "${workspaceFolder}/api/main.py",
             "console": "integratedTerminal",
+            "args": [
+                "--experiment_name", "",
+                "--bind", "0.0.0.0",
+                "--gunicorn_port", "8000",
+                "--mlflow_port", "5000",
+                "--verbose", "info",
+                "--workers", "1"
+            ],
             "justMyCode": true
         },
         {
