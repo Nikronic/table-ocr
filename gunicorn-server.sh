@@ -1,1 +1,3 @@
-gunicorn api.main:app --bind 127.0.0.1:8000 --workers 1 -k uvicorn.workers.UvicornWorker
+#!/bin/bash
+
+python api/main.py --experiment_name ""  --bind 0.0.0.0 --gunicorn_port 8000 --mlflow_port 5000 --verbose "info" --workers 1

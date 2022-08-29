@@ -8,22 +8,54 @@ from ttocr.detection import detectors
 from ttocr.detection import DetectionMode
 from ttocr.utils import loggers
 from ttocr.api import models as api_models
+from ttocr.api import apps as api_apps
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
+from gunicorn.app.base import BaseApplication
 import fastapi
 import uvicorn
 # devops
 import mlflow
 # helpers
-from typing import List, Optional
+from typing import Callable, List, Optional
 from pathlib import Path
+import argparse
 import shutil
 import logging
 import sys
 
 
+# argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--experiment_name', type=str,
+                    help='mlflow experiment name for logging',
+                    default='',
+                    required=True)
+parser.add_argument('--verbose', type=str,
+                    help='logging verbosity level.',
+                    choices=['debug', 'info'],
+                    default='info',
+                    required=True)
+parser.add_argument('--bind', type=str,
+                    help='ip address of host',
+                    default='0.0.0.0',
+                    required=True)
+parser.add_argument('--mlflow_port', type=int,
+                    help='port of mlflow tracking',
+                    default=5000,
+                    required=True)
+parser.add_argument('--gunicorn_port', type=int,
+                    help='port used for creating gunicorn',
+                    default=8000,
+                    required=True)
+parser.add_argument('--workers', type=int,
+                    help='number of works used by gunicorn',
+                    default=1,
+                    required=True)
+args = parser.parse_args()
+
 # configure logging
-VERBOSE = logging.DEBUG
+VERBOSE = logging.DEBUG if args.verbose == 'debug' else logging.INFO
 MLFLOW_ARTIFACTS_BASE_PATH: Path = Path('artifacts')
 if MLFLOW_ARTIFACTS_BASE_PATH.exists():
     shutil.rmtree(MLFLOW_ARTIFACTS_BASE_PATH)
@@ -36,15 +68,14 @@ logger = loggers.Logger(
 )
 
 # run mlflow tracking server
-mlflow.set_tracking_uri('http://localhost:5000')
+mlflow.set_tracking_uri(f'http://{args.bind}:{args.mlflow_port}')
 
 # log experiment configs
-MLFLOW_EXPERIMENT_NAME = f'Fix#8 - {TTOCR_VERSION}'
+if args.experiment_name == '':
+    MLFLOW_EXPERIMENT_NAME = f'{TTOCR_VERSION}'
+else:
+    MLFLOW_EXPERIMENT_NAME = f'{args.experiment_name} - {TTOCR_VERSION}'
 mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
-MLFLOW_TAGS = {
-    'stage': 'beta'  # dev, beta, production
-}
-mlflow.set_tags(MLFLOW_TAGS)
 
 logger.info(f'MLflow experiment name: {MLFLOW_EXPERIMENT_NAME}')
 logger.info(f'MLflow experiment id: {mlflow.active_run().info.run_id}')
@@ -342,5 +373,9 @@ async def flag(
         raise fastapi.HTTPException(status_code=500, detail=str(e))
 
 if __name__ == '__main__':
-    # REMARK: use gunicorn in production, i.e. do `bash gunicorn-server.sh`
-    uvicorn.run(app=app, host='0.0.0.0', port=8000, debug=True)
+    options = {
+        'bind': f'{args.bind}:{args.gunicorn_port}',
+        'workers': args.workers,
+        'worker_class': 'uvicorn.workers.UvicornWorker'
+    }
+    api_apps.StandaloneApplication(app=app, options=options).run()
