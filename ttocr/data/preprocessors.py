@@ -29,7 +29,7 @@ class PreprocessorBase:
 
     def _log(self, *args, **kwargs):
         raise NotImplementedError
-    
+
     def _get_class_attributes(self) -> dict:
         """Attributes of the class that are configs of an operation
 
@@ -50,10 +50,10 @@ class PreprocessorBase:
         for k, v in class_attributes.items():
             if (not isinstance(v, logging.Logger)) and (not k.startswith('_')):
                 d[k] = v
-            
+
         class_attributes = d
         return class_attributes
-    
+
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         raise NotImplementedError
 
@@ -119,7 +119,8 @@ class CV2ImageColorConverter(ImageColorConverter):
             mode (CV2ImageColorConverterModes): mode to verify
         """
         if mode is None:
-            raise ValueError('mode is None. Please provide mode via init or call') 
+            raise ValueError(
+                'mode is None. Please provide mode via init or call')
 
         if mode not in CV2ImageColorConverterModes:
             raise ValueError(f'Invalid mode: {mode}')
@@ -130,7 +131,7 @@ class CV2ImageColorConverter(ImageColorConverter):
     def __call__(self, image: np.ndarray,
                  *args, **kwargs) -> np.ndarray:
         """Convert image color space via ``OpenCV``
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to convert
             mode (CV2ImageColorConverterModes): color mode. For more info
@@ -152,13 +153,13 @@ class ImageSmoother(PreprocessorBase):
 
     def __init__(self, kernel_size: Optional[int] = None) -> None:
         """Initialize ``ImageSmoother`` with given ``kernel_size``
-        
+
         Args:
             kernel_size (int): kernel size for smoothing
         """
         super().__init__()
         self.kernel_size = kernel_size
-    
+
     def _log(self, *args, **kwargs):
         self.logger.info(
             f'{self.__class__.__name__} image smoothing is performed'
@@ -168,7 +169,7 @@ class ImageSmoother(PreprocessorBase):
     def smooth(self, image: np.ndarray,
                *args, **kwargs) -> np.ndarray:
         """Smooth image via given method
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to smooth
             *args: additional arguments for smoother
@@ -210,7 +211,7 @@ class GaussianImageSmoother(ImageSmoother):
                  kernel_size: Optional[int] = None,
                  border_type: CV2BorderTypes = CV2BorderTypes.DEFAULT) -> None:
         """Initialize ``GaussianImageSmoother`` with given ``kernel_size``
-        
+
         Args:
             kernel_size (int): kernel size for smoothing
             border_type (CV2BorderTypes): border type for smoothing (kernel operation)
@@ -221,7 +222,7 @@ class GaussianImageSmoother(ImageSmoother):
     def smooth(self, image: np.ndarray,
                *args, **kwargs) -> np.ndarray:
         """Smooth image via given method
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to smooth
             *args: additional arguments for smoother
@@ -242,9 +243,9 @@ class GaussianImageSmoother(ImageSmoother):
             image=image,
             ksize=(self.kernel_size, self.kernel_size),
             sigmaX=0,  # lets compute sigma based on kernel size (ie = 0)
-            borderType = self.border_type.value
+            borderType=self.border_type.value
         )
-        
+
         return smoothed
 
 
@@ -256,7 +257,7 @@ class ImageThresholder(PreprocessorBase):
         """Initialize ``ImageThresholder``
         """
         super().__init__()
-    
+
     def _log(self, *args, **kwargs):
         self.logger.info(
             f'{self.__class__.__name__} image thresholding is performed'
@@ -266,7 +267,7 @@ class ImageThresholder(PreprocessorBase):
     def threshold(self, image: np.ndarray,
                   *args, **kwargs) -> np.ndarray:
         """Threshold image via given method
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to threshold
             *args: additional arguments for thresholder
@@ -281,7 +282,7 @@ class ImageThresholder(PreprocessorBase):
 
 class CV2ThresholdTypes(Enum):
     """Enum for threshold types in ``cv2.THRESH_*``
-    
+
     Notes:
         For more information, see https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gaa9e58d2860d4afa658ef70a9b1115576
     """
@@ -295,7 +296,7 @@ class CV2ThresholdTypes(Enum):
 
 class CV2AdaptiveThresholdTypes(Enum):
     """Enum for adaptive threshold types in ``cv2.ADAPTIVE_THRESH_*``
-    
+
     Notes:
         For more information, see https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gaa9e58d2860d4afa658ef70a9b1115576
     """
@@ -308,7 +309,7 @@ class GaussianAdaptiveThresholder(ImageThresholder):
 
     Notes:
         For more info about the algorithm, see https://docs.opencv.org/4.6.0/d7/d4d/tutorial_py_thresholding.html
-    
+
     .. _cv2.adaptiveThreshold: https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#ga72b913f352e4a1b1b397736707afcde3
     """
 
@@ -319,7 +320,7 @@ class GaussianAdaptiveThresholder(ImageThresholder):
                  block_size: Optional[int] = None,
                  constant: Optional[float] = None) -> None:
         """Initialize ``GaussianAdaptiveThresholder``
-        
+
         Args:
             max_value (int): maximum value for pixels in the image
             adaptive_method (CV2AdaptiveThresholdTypes): adaptive thresholding algorithm
@@ -334,7 +335,7 @@ class GaussianAdaptiveThresholder(ImageThresholder):
         self.threshold_type = threshold_type
         self.block_size = block_size
         self.constant = constant
-    
+
     @staticmethod
     def _check_threshold_type(type) -> None:
         """Checks if threshold type is valid
@@ -349,7 +350,7 @@ class GaussianAdaptiveThresholder(ImageThresholder):
     def threshold(self, image: np.ndarray,
                   *args, **kwargs) -> np.ndarray:
         """Threshold image via given method
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to threshold
             *args: additional arguments for thresholder
@@ -362,7 +363,8 @@ class GaussianAdaptiveThresholder(ImageThresholder):
                  *args, **kwargs) -> np.ndarray:
         # if kwargs provided, override class attributes
         self.max_value = kwargs.get('max_value', self.max_value)
-        self.adaptive_method = kwargs.get('adaptive_method', self.adaptive_method)
+        self.adaptive_method = kwargs.get(
+            'adaptive_method', self.adaptive_method)
         self.threshold_type = kwargs.get('threshold_type', self.threshold_type)
         self.block_size = kwargs.get('block_size', self.block_size)
         self.constant = kwargs.get('constant', self.constant)
@@ -386,16 +388,16 @@ class GaussianAdaptiveThresholder(ImageThresholder):
             plt.imshow(thresholded, cmap='gray')
             plt.savefig(plot / 'gaussian_adaptive_thresh.png')
             plt.close(fig)
-        
+
         return thresholded
 
 
 class OtsuThresholder(ImageThresholder):
     """Binarizes an image in an Otsu adaptive manner via cv2.threshold_
-    
+
     Notes:
         For more info about the algorithm, see https://docs.opencv.org/4.6.0/d7/d4d/tutorial_py_thresholding.html
-    
+
     .. _cv2.threshold: https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gae8a4a146d1ca78c626a53577199e9c57
     """
 
@@ -405,7 +407,7 @@ class OtsuThresholder(ImageThresholder):
                  threshold_type: Optional[CV2ThresholdTypes] = None
                  ) -> None:
         """Initialize ``OtsuThresholder``
-        
+
         Args:
             threshold_value (float): threshold value
             max_value (int): maximum value to use with threshold types
@@ -417,7 +419,7 @@ class OtsuThresholder(ImageThresholder):
         self.threshold_value = threshold_value
         self.max_value = max_value
         self.threshold_type = threshold_type
-    
+
     @staticmethod
     def _check_threshold_type(type) -> None:
         """Checks if threshold type is valid
@@ -432,19 +434,20 @@ class OtsuThresholder(ImageThresholder):
     def threshold(self, image: np.ndarray,
                   *args, **kwargs) -> np.ndarray:
         """Threshold image via given method
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to threshold
             *args: additional arguments for thresholder
             **kwargs: additional keyword arguments for thresholder
         """
         return cv2.threshold(image, *args, **kwargs)[1]
-    
+
     def __call__(self, image: np.ndarray,
                  plot: Optional[Path] = None,
                  *args, **kwargs) -> np.ndarray:
         # if kwargs provided, override class attributes
-        self.threshold_value = kwargs.get('threshold_value', self.threshold_value)
+        self.threshold_value = kwargs.get(
+            'threshold_value', self.threshold_value)
         self.max_value = kwargs.get('max_value', self.max_value)
         self.threshold_type = kwargs.get('threshold_type', self.threshold_type)
 
@@ -465,7 +468,7 @@ class OtsuThresholder(ImageThresholder):
             plt.imshow(thresholded, cmap='gray')
             plt.savefig(plot / 'otsu_adaptive_thresh.png')
             plt.close(fig)
-        
+
         return thresholded
 
 
@@ -477,7 +480,7 @@ class MorphologicalOperator(PreprocessorBase):
         """Initialize ``MorphologicalOperator``
         """
         super().__init__()
-    
+
     def _log(self, *args, **kwargs):
         self.logger.info(
             f'{self.__class__.__name__} morphological operator is performed'
@@ -487,7 +490,7 @@ class MorphologicalOperator(PreprocessorBase):
     def morph(self, image: np.ndarray,
               *args, **kwargs) -> np.ndarray:
         """Morph image via given method
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to morph
             *args: additional arguments for morphological operator
@@ -508,10 +511,11 @@ class Dilate(MorphologicalOperator):
 
     .. _cv2.dilate: https://docs.opencv.org/4.6.0/d4/d86/group__imgproc__filter.html#ga4ff0f3318642c4f469d0e11f242f3b6c
     """
+
     def __init__(self,
                  morph_size: Optional[int] = None,
                  iterations: Optional[int] = None
-                ) -> None:
+                 ) -> None:
         """Initialize ``Dilate``
 
         Args:
@@ -523,11 +527,11 @@ class Dilate(MorphologicalOperator):
 
         self.morph_size = morph_size
         self.iterations = iterations
-    
+
     def morph(self, image: np.ndarray,
               *args, **kwargs) -> np.ndarray:
         """Morph image via given method
-        
+
         Args:
             image (:class:`numpy.ndarray`): image to morph
             *args: additional arguments for ``cv2.dilate``
@@ -537,29 +541,29 @@ class Dilate(MorphologicalOperator):
         dilated = cv2.dilate(~dilated, *args, **kwargs)
         dilated = ~dilated
         return dilated
-    
+
     def __call__(self, image: np.ndarray,
                  plot: Optional[Path] = None,
                  *args, **kwargs) -> np.ndarray:
-            # if kwargs provided, override class attributes
-            self.morph_size = kwargs.get('morph_size', self.morph_size)
-            self.iterations = kwargs.get('iterations', self.iterations)
-            
-            morphed = self.morph(
-                image=image,
-                kernel=cv2.getStructuringElement(
-                    cv2.MORPH_RECT,
-                    (self.morph_size, self.morph_size)
-                ),
-                iterations=self.iterations
-            )
-    
-            # logging
-            self._log(**self._get_class_attributes())
-            if plot is not None:
-                fig = plt.figure(figsize=(12, 12))
-                plt.imshow(morphed, cmap='gray')
-                plt.savefig(plot / 'dilate.png')
-                plt.close(fig)
-            
-            return morphed
+        # if kwargs provided, override class attributes
+        self.morph_size = kwargs.get('morph_size', self.morph_size)
+        self.iterations = kwargs.get('iterations', self.iterations)
+
+        morphed = self.morph(
+            image=image,
+            kernel=cv2.getStructuringElement(
+                cv2.MORPH_RECT,
+                (self.morph_size, self.morph_size)
+            ),
+            iterations=self.iterations
+        )
+
+        # logging
+        self._log(**self._get_class_attributes())
+        if plot is not None:
+            fig = plt.figure(figsize=(12, 12))
+            plt.imshow(morphed, cmap='gray')
+            plt.savefig(plot / 'dilate.png')
+            plt.close(fig)
+
+        return morphed

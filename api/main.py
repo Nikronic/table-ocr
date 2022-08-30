@@ -129,7 +129,7 @@ def _predict(
         DETECTION_MODE = DetectionMode.ML_SINGLE_COLUMN_TABLE
     else:
         DETECTION_MODE = DetectionMode.ML_FULL_TABLE
-    
+
     # get image
     img = image
 
@@ -161,7 +161,7 @@ def _predict(
             max_line_gap=hough_max_line_gap
         )
         lines = line_detector(image=canny_edges)
-        
+
         # define ocr engine
         ocr_engine = detectors.TesseractOCR(
             l=ocr_lang,
@@ -178,7 +178,7 @@ def _predict(
         )
         # drop annotation of OCRed image in debug mode (2nd element is image)
         texts = result[0] if flag else result
-    
+
     elif DETECTION_MODE == DetectionMode.ML_SINGLE_COLUMN_TABLE:
         # smooth image
         gaussian_blur = preprocessors.GaussianImageSmoother(
@@ -207,7 +207,7 @@ def _predict(
             image=pre_img,
             iterations=dilation_iterations,
             plot=logger.MLFLOW_ARTIFACTS_IMAGES_PATH if flag else None)
-        
+
         # detect lines of table and cells
         contour_line_detector = detectors.ContourLinesDetector(
             cell_threshold=contour_line_cell_threshold,
@@ -243,6 +243,7 @@ def _predict(
         mlflow.log_artifacts(MLFLOW_ARTIFACTS_BASE_PATH)
     return texts
 
+
 # instantiate fast api app
 app = fastapi.FastAPI()
 
@@ -251,11 +252,11 @@ app = fastapi.FastAPI()
 async def predict(
     conf: api_models.Payload,
     file: fastapi.UploadFile = fastapi.File(...)
-    ):
+):
     if file.content_type.startswith('image/') is False:
         raise fastapi.HTTPException(
             status_code=400,
-            detail=f'File \'{file.filename}\' is not an image.')    
+            detail=f'File \'{file.filename}\' is not an image.')
 
     try:
         contents = await file.read()
@@ -298,7 +299,7 @@ async def predict(
             ocr_oem=conf.ocr_oem,
             flag=False
         )
-        
+
         logger.info('OCR finished')
         return {
             'ocr_result': ocr_result,
@@ -308,16 +309,17 @@ async def predict(
         e = sys.exc_info()[1]
         raise fastapi.HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/flag/", response_model=api_models.PredictionResponse)
 async def flag(
     conf: api_models.Payload,
     file: fastapi.UploadFile = fastapi.File(...)
-    ):
+):
     if file.content_type.startswith('image/') is False:
         raise fastapi.HTTPException(
             status_code=400,
             detail=f'File \'{file.filename}\' is not an image.')
-        
+
     # create new instance of mlflow artifact
     logger.create_artifact_instance()
 
@@ -362,7 +364,7 @@ async def flag(
             ocr_oem=conf.ocr_oem,
             flag=True
         )
-        
+
         logger.info('OCR finished')
         return {
             'ocr_result': ocr_result,

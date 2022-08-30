@@ -9,6 +9,7 @@ class StandaloneApplication(BaseApplication):
 
     For options, you can visit https://docs.gunicorn.org/en/latest/settings.html
     """
+
     def __init__(self, app: Callable, options: dict = None):
         """Initialize runner
 

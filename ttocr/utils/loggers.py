@@ -26,14 +26,15 @@ class LoggingLevels(Enum):
     DEBUG = 10
     NOTSET = 0
 
+
 class Logger(logging.Logger):
     def __init__(self,
-        name: str,
-        level: LoggingLevels,
-        mlflow_artifacts_base_path: Union[Path, str],
-        libs: Optional[List[str]] = None
-        
-    ) -> None:
+                 name: str,
+                 level: LoggingLevels,
+                 mlflow_artifacts_base_path: Union[Path, str],
+                 libs: Optional[List[str]] = None
+
+                 ) -> None:
         super().__init__(name, level)
 
         self.__mlflow_artifacts_base_path = mlflow_artifacts_base_path
@@ -62,17 +63,17 @@ class Logger(logging.Logger):
                 __libs_logger.addHandler(stdout_stream_handler)
                 __libs_logger.addHandler(stderr_stream_handler)
                 self.libs_logger.append(__libs_logger)
-        
+
         # hold `*.log` handlers so we can delete it on each new artifact creation
         self.__prev_handler: Optional[logging.Handler] = None
-        
+
     @property
     def mlflow_artifacts_base_path(self) -> Path:
         self.__mlflow_artifacts_base_path = self.__str_to_path(
             self.__mlflow_artifacts_base_path
         )
         return self.__mlflow_artifacts_base_path
-    
+
     def __create_artifacts_dir(self, path: Path) -> None:
         """Creates an empty dir at ``path``
 
@@ -135,11 +136,11 @@ class Logger(logging.Logger):
             self.removeHandler(self.__prev_handler)
             for lib_log in self.libs_logger:
                 lib_log.removeHandler(self.__prev_handler)
-        
+
     def create_artifact_instance(
-            self,
-            artifact_name: str = None
-        ):
+        self,
+        artifact_name: str = None
+    ):
         """Creates an entire artifact (mlflow) directory each time it is called
 
         This is used to create artifacts sub directories that each include
@@ -161,7 +162,7 @@ class Logger(logging.Logger):
         if artifact_name is None:
             artifact_name = f'{self._artifact_name}'
             self._artifact_name += 1
-        
+
         # create new artifacts directory
         self._setup_mlflow_artifacts_dirs(base_path=artifact_name)
 
@@ -175,6 +176,6 @@ class Logger(logging.Logger):
         # redirect libs main logger to our main
         for lib_log in self.libs_logger:
             lib_log.addHandler(logger_handler)
-        
+
         # keep last handler so we can remove it on next call
         self.__prev_handler = logger_handler
