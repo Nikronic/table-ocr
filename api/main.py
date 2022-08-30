@@ -305,7 +305,7 @@ async def predict(
             'ocr_result': ocr_result,
         }
     except Exception as error:
-        logging.exception(error)
+        logger.exception(error)
         e = sys.exc_info()[1]
         raise fastapi.HTTPException(status_code=500, detail=str(e))
 
@@ -370,7 +370,7 @@ async def flag(
             'ocr_result': ocr_result,
         }
     except Exception as error:
-        logging.exception(error)
+        logger.exception(error)
         e = sys.exc_info()[1]
         raise fastapi.HTTPException(status_code=500, detail=str(e))
 
