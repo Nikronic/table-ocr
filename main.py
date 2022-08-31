@@ -11,6 +11,8 @@ from ttocr.utils import loggers
 from ttocr.version import VERSION as TTOCR_VERSION
 # devops
 import mlflow
+# benchmark
+from pyinstrument import Profiler
 # helpers
 from typing import List, Optional
 from pathlib import Path
@@ -205,9 +207,10 @@ if __name__ == '__main__':
         mlflow_artifacts_base_path=MLFLOW_ARTIFACTS_BASE_PATH,
         libs=__libs
     )
+    profiler = Profiler()
 
     # log experiment configs
-    MLFLOW_EXPERIMENT_NAME = f'Fix#8 - {TTOCR_VERSION}'
+    MLFLOW_EXPERIMENT_NAME = f'Fix#10 - {TTOCR_VERSION}'
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
     mlflow.start_run()
 
@@ -227,7 +230,17 @@ if __name__ == '__main__':
         img_reader = io.CV2ImageReader()
         img = img_reader(filename)
 
+        # benchmark
+        profiler.start()
         result = _predict(image=img, flag=FLAG)
+        profiler.stop()
+        # save benchmark to disk
+        profiler_output = profiler.output_html()
+        with open(
+            logger.MLFLOW_ARTIFACTS_LOGS_PATH / f'{mlflow.active_run().info.run_id}.html',
+            'w') as fp:
+            fp.write(profiler_output)
+            fp.close()
 
     except Exception as e:
         logger.exception(e)
