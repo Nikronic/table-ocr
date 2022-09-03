@@ -15,6 +15,7 @@ from ttocr.api import apps as api_apps
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
 import fastapi
+from fastapi.middleware.cors import CORSMiddleware
 import base64
 import uvicorn
 # devops
@@ -250,6 +251,17 @@ def _predict(
 
 # instantiate fast api app
 app = fastapi.FastAPI()
+
+# fastapi cross origin
+origins = ['*']
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*'],
+)
 
 
 @app.post("/predict/", response_model=api_models.PredictionResponse)
