@@ -1,6 +1,9 @@
 # core
 import numpy as np
-import cv2
+from PIL import Image
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+from io import BytesIO
 # ours
 from ttocr.data import io
 from ttocr.data import preprocessors
@@ -12,6 +15,7 @@ from ttocr.api import apps as api_apps
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
 import fastapi
+import base64
 import uvicorn
 # devops
 import mlflow
@@ -251,19 +255,12 @@ app = fastapi.FastAPI()
 @app.post("/predict/", response_model=api_models.PredictionResponse)
 async def predict(
     conf: api_models.Payload,
-    file: fastapi.UploadFile = fastapi.File(...)
+    file: str = fastapi.Form()
 ):
-    if file.content_type.startswith('image/') is False:
-        raise fastapi.HTTPException(
-            status_code=400,
-            detail=f'File \'{file.filename}\' is not an image.')
 
     try:
-        contents = await file.read()
-        image = cv2.imdecode(
-            np.frombuffer(contents, np.uint8),
-            cv2.IMREAD_COLOR
-        )
+        image = Image.open(BytesIO(base64.b64decode(str.encode(file)))).convert('RGB')
+        image = np.array(image)[:, :, ::-1].copy()
         ocr_result = _predict(
             image=image,
             mode=conf.mode,
@@ -313,22 +310,14 @@ async def predict(
 @app.post("/flag/", response_model=api_models.PredictionResponse)
 async def flag(
     conf: api_models.Payload,
-    file: fastapi.UploadFile = fastapi.File(...)
+    file: str = fastapi.Form()
 ):
-    if file.content_type.startswith('image/') is False:
-        raise fastapi.HTTPException(
-            status_code=400,
-            detail=f'File \'{file.filename}\' is not an image.')
-
     # create new instance of mlflow artifact
     logger.create_artifact_instance()
 
-    try:
-        contents = await file.read()
-        image = cv2.imdecode(
-            np.frombuffer(contents, np.uint8),
-            cv2.IMREAD_COLOR
-        )
+    try: 
+        image = Image.open(BytesIO(base64.b64decode(str.encode(file)))).convert('RGB')
+        image = np.array(image)[:, :, ::-1].copy()
         ocr_result = _predict(
             image=image,
             mode=conf.mode,
@@ -381,3 +370,4 @@ if __name__ == '__main__':
         'worker_class': 'uvicorn.workers.UvicornWorker'
     }
     api_apps.StandaloneApplication(app=app, options=options).run()
+    # uvicorn.run(app=app, host=args.bind, port=args.gunicorn_port, debug=True)
