@@ -458,10 +458,10 @@ async def delete_config(idx: int):
 
 
 if __name__ == '__main__':
-    # options = {
-    #     'bind': f'{args.bind}:{args.gunicorn_port}',
-    #     'workers': args.workers,
-    #     'worker_class': 'uvicorn.workers.UvicornWorker'
-    # }
-    # api_apps.StandaloneApplication(app=app, options=options).run()
-    uvicorn.run(app=app, host=args.bind, port=args.gunicorn_port, debug=True)
+    options = {
+        'bind': f'{args.bind}:{args.gunicorn_port}',
+        'workers': args.workers,
+        'worker_class': 'uvicorn.workers.UvicornWorker'
+    }
+    api_apps.StandaloneApplication(app=app, options=options).run()
+    # uvicorn.run(app=app, host=args.bind, port=args.gunicorn_port, debug=True)
