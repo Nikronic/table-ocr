@@ -72,3 +72,6 @@ gradio/flags
 
 # fastapi
 test_sample
+
+# sqlite db
+*.db

@@ -29,6 +29,8 @@ class PredictionResponse(BaseModel):
 
 
 class Payload(BaseModel):
+    name: str
+
     mode: bool = True
 
     # preprocessing for ML_TABLE
@@ -60,3 +62,6 @@ class Payload(BaseModel):
     ocr_dpi: int = 150
     ocr_psm: int = 6
     ocr_oem: int = 1
+
+    class Config:
+        orm_mode = True
