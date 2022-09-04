@@ -12,6 +12,7 @@ from ttocr.detection import DetectionMode
 from ttocr.utils import loggers
 from ttocr.api import models as api_models
 from ttocr.api import apps as api_apps
+from ttocr.api import database as api_database
 from ttocr.version import VERSION as TTOCR_VERSION
 # api
 import fastapi
@@ -73,6 +74,12 @@ logger = loggers.Logger(
 
 # run mlflow tracking server
 mlflow.set_tracking_uri(f'http://{args.bind}:{args.mlflow_port}')
+
+# setup database
+# create a sqlite engine instance
+engine = api_database.create_engine('sqlite:///ttocr_ml_configs.db')
+# create the database
+api_database.Base.metadata.create_all(engine)
 
 # log experiment configs
 if args.experiment_name == '':
@@ -375,11 +382,86 @@ async def flag(
         e = sys.exc_info()[1]
         raise fastapi.HTTPException(status_code=500, detail=str(e))
 
+
+@app.post(
+    path='/config/',
+    status_code=fastapi.status.HTTP_201_CREATED,
+    response_model=api_models.Payload)
+async def create_config(conf: api_models.PayloadCreate):
+    session = api_database.Session(bind=engine, expire_on_commit=False)
+    # create database entry
+    ttocr_ml_config_instance = api_database.TTOCRMLConfigs(
+        mode = conf.mode,
+
+        # preprocessing for ML_TABLE
+        canny_threshold1 = conf.canny_threshold1,
+        canny_threshold2 = conf.canny_threshold2,
+        canny_aperture_size = conf.canny_aperture_size,
+        canny_L2_gradient = conf.canny_L2_gradient,
+
+        hough_min_line_length = conf.hough_min_line_length,
+        hough_max_line_gap = conf.hough_max_line_gap,
+
+        # preprocessing for ML_SINGLE_COLUMN_TABLE
+        smooth_kernel_size = conf.smooth_kernel_size,
+
+        thresh_block_size = conf.thresh_block_size,
+        thresh_c = conf.thresh_c,
+
+        dilate_morph_size = conf.dilate_morph_size,
+        dilation_iterations = conf.dilation_iterations,
+
+        contour_line_cell_threshold = conf.contour_line_cell_threshold,
+        contour_min_solid_height_limit = conf.contour_min_solid_height_limit,
+        contour_max_solid_height_limit = conf.contour_max_solid_height_limit,
+
+        roi_offset = conf.roi_offset,
+
+        # common
+        ocr_lang = conf.ocr_lang,
+        ocr_dpi = conf.ocr_dpi,
+        ocr_psm =conf.ocr_psm,
+        ocr_oem = conf.ocr_oem
+    )
+
+    session.add(ttocr_ml_config_instance)
+    session.commit()
+    session.refresh(ttocr_ml_config_instance)
+    session.close()
+
+    return ttocr_ml_config_instance
+
+@app.get('/config/', response_model=List[api_models.Payload])
+async def read_all_config():
+    session = api_database.Session(bind=engine, expire_on_commit=False)
+    all_ttocr_ml_config_instances = session.query(api_database.TTOCRMLConfigs).all()
+    session.close()
+    return all_ttocr_ml_config_instances
+
+@app.get('/config/{idx}', response_model=api_models.Payload)
+async def read_config(idx: int):
+    session = api_database.Session(bind=engine, expire_on_commit=False)
+    ttocr_ml_config_instance = session.query(api_database.TTOCRMLConfigs).get(idx)
+    session.close()
+    return ttocr_ml_config_instance
+
+@app.delete(path='/config/{idx}', status_code=fastapi.status.HTTP_204_NO_CONTENT)
+async def delete_config(idx: int):
+    session = api_database.Session(bind=engine, expire_on_commit=False)
+    ttocr_ml_config_instance = session.query(api_database.TTOCRMLConfigs).get(idx)
+    if ttocr_ml_config_instance:
+        session.delete(ttocr_ml_config_instance)
+        session.commit()
+        session.close()
+    else:
+        fastapi.HTTPException(status_code=404, detail=f'config with id {idx} not found')
+
+
 if __name__ == '__main__':
-    options = {
-        'bind': f'{args.bind}:{args.gunicorn_port}',
-        'workers': args.workers,
-        'worker_class': 'uvicorn.workers.UvicornWorker'
-    }
-    api_apps.StandaloneApplication(app=app, options=options).run()
-    # uvicorn.run(app=app, host=args.bind, port=args.gunicorn_port, debug=True)
+    # options = {
+    #     'bind': f'{args.bind}:{args.gunicorn_port}',
+    #     'workers': args.workers,
+    #     'worker_class': 'uvicorn.workers.UvicornWorker'
+    # }
+    # api_apps.StandaloneApplication(app=app, options=options).run()
+    uvicorn.run(app=app, host=args.bind, port=args.gunicorn_port, debug=True)
