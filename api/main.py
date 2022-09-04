@@ -387,10 +387,12 @@ async def flag(
     path='/config/',
     status_code=fastapi.status.HTTP_201_CREATED,
     response_model=api_models.Payload)
-async def create_config(conf: api_models.PayloadCreate):
+async def create_config(conf: api_models.Payload):
     session = api_database.Session(bind=engine, expire_on_commit=False)
     # create database entry
     ttocr_ml_config_instance = api_database.TTOCRMLConfigs(
+        name = conf.name,
+
         mode = conf.mode,
 
         # preprocessing for ML_TABLE
@@ -438,23 +440,26 @@ async def read_all_config():
     session.close()
     return all_ttocr_ml_config_instances
 
-@app.get('/config/{idx}', response_model=api_models.Payload)
-async def read_config(idx: int):
+@app.get('/config/{name}', response_model=api_models.Payload)
+async def read_config(name: str):
     session = api_database.Session(bind=engine, expire_on_commit=False)
-    ttocr_ml_config_instance = session.query(api_database.TTOCRMLConfigs).get(idx)
+    ttocr_ml_config_instance = session.query(api_database.TTOCRMLConfigs).get(name)
     session.close()
     return ttocr_ml_config_instance
 
-@app.delete(path='/config/{idx}', status_code=fastapi.status.HTTP_204_NO_CONTENT)
-async def delete_config(idx: int):
+@app.delete(path='/config/{name}', status_code=fastapi.status.HTTP_204_NO_CONTENT)
+async def delete_config(name: str):
     session = api_database.Session(bind=engine, expire_on_commit=False)
-    ttocr_ml_config_instance = session.query(api_database.TTOCRMLConfigs).get(idx)
+    ttocr_ml_config_instance = session.query(api_database.TTOCRMLConfigs).get(name)
     if ttocr_ml_config_instance:
         session.delete(ttocr_ml_config_instance)
         session.commit()
         session.close()
     else:
-        fastapi.HTTPException(status_code=404, detail=f'config with id {idx} not found')
+        fastapi.HTTPException(
+            status_code=404,
+            detail=f'config with name "{name}" not found'
+        )
 
 
 if __name__ == '__main__':

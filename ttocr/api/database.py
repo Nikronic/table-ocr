@@ -1,6 +1,6 @@
 
 __all__ = [
-    'create_engine'
+    'create_engine', 'declarative_base', 'Session'
     'Base', 'TTOCRMLConfigs'
 ]
 
@@ -29,7 +29,7 @@ Base = declarative_base()
 class TTOCRMLConfigs(Base):
     # DATABASE CONFIG
     __tablename__ = 'ttocr_ml_configs'
-    idx = Column(Integer, primary_key=True)
+    name = Column(String(25), primary_key=True)
 
     # OUR OCR CONFIG
     mode = Column(Boolean)
