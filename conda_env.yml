@@ -348,6 +348,7 @@ dependencies:
   - pip:
     - aiohttp==3.8.1
     - aiosignal==1.2.0
+    - alabaster==0.7.12
     - alembic==1.8.1
     - analytics-python==1.4.0
     - async-timeout==4.0.2
@@ -356,6 +357,7 @@ dependencies:
     - click==8.1.3
     - databricks-cli==0.17.0
     - docker==5.0.3
+    - docutils==0.17.1
     - fastapi==0.80.0
     - ffmpy==0.3.0
     - flask==2.2.2
@@ -369,6 +371,7 @@ dependencies:
     - httpcore==0.15.0
     - httptools==0.4.0
     - httpx==0.23.0
+    - imagesize==1.4.1
     - itsdangerous==2.1.2
     - linkify-it-py==1.0.3
     - mako==1.2.1
@@ -396,6 +399,17 @@ dependencies:
     - querystring-parser==1.2.4
     - rfc3986==1.5.0
     - smmap==5.0.0
+    - snowballstemmer==2.2.0
+    - sphinx==5.1.1
+    - sphinx-autodoc-typehints==1.19.2
+    - sphinx-copybutton==0.5.0
+    - sphinx-rtd-theme==1.0.0
+    - sphinxcontrib-applehelp==1.0.2
+    - sphinxcontrib-devhelp==1.0.2
+    - sphinxcontrib-htmlhelp==2.0.0
+    - sphinxcontrib-jsmath==1.0.1
+    - sphinxcontrib-qthelp==1.0.3
+    - sphinxcontrib-serializinghtml==1.1.5
     - sqlalchemy==1.4.40
     - sqlparse==0.4.2
     - starlette==0.19.1
