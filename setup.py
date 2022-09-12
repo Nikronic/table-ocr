@@ -19,7 +19,7 @@ setup(name='ttocr', version=VERSION["VERSION"], packages=find_packages(),
       long_description_content_type='text/markdown',
       include_package_data = True,
       package_data={
-          'configs': ['data/*.csv'],
-          'preprocessors': ['data/*.json'],
+        # ref https://stackoverflow.com/a/73649552/18971263
+          '': ['*.json'],
         }
       )
