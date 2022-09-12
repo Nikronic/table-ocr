@@ -38,7 +38,7 @@ class OnAccess(EnumMeta):
 
 
 class ExtendedEnum(Enum, metaclass=OnAccess):
-    """Same as :class:`Enum` but runs a user-specified function whenever member is accessed.
+    """Same as :class:`enum.Enum` but runs a user-specified function whenever member is accessed.
 
     Example:
     ::

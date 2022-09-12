@@ -1,14 +1,20 @@
 {
     "cSpell.words": [
+        "autosectionlabel",
+        "bysource",
         "CONFIGFILE",
         "contentype",
+        "copybutton",
         "facecolor",
         "fontdict",
         "frombuffer",
+        "githubpages",
         "hspace",
         "imdecode",
         "imread",
+        "ivar",
         "jsonable",
+        "ksize",
         "ocred",
         "OTSU",
         "savefig",
@@ -16,7 +22,9 @@
         "ttocr",
         "ttocrdl",
         "ttocrml",
+        "typehints",
         "verticalalignment",
+        "viewcode",
         "xaxis",
         "yaxis"
     ]

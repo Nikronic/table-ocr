@@ -5,6 +5,8 @@ __all__ = [
 
     'ImageThresholder', 'CV2ThresholdTypes', 'GaussianAdaptiveThresholder',
     'OtsuThresholder',
+
+    'PreprocessorBase'
 ]
 
 # core
@@ -33,7 +35,7 @@ class PreprocessorBase:
     def _get_class_attributes(self) -> dict:
         """Attributes of the class that are configs of an operation
 
-        Notes:
+        Note:
             This is used for logging the configs since they need to be manually 
             tuned or experimented with. I.e. for the same input, we might run
             this class (and the operation it implemented) multiple times with
@@ -185,8 +187,9 @@ class ImageSmoother(PreprocessorBase):
 class CV2BorderTypes(Enum):
     """Enum for border types in ``cv2.BORDER_*``
 
-    Notes:
-        For more information, see https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#ga209f2f4869e304c82d07739337eae7c5
+    Note:
+        For more information,
+        see `this <https://docs.opencv.org/4.6.0/d2/de8/group__core__array.html#ga209f2f4869e304c82d07739337eae7c5>`__.
     """
     CONSTANT = cv2.BORDER_CONSTANT
     REPLICATE = cv2.BORDER_REPLICATE
@@ -201,16 +204,17 @@ class CV2BorderTypes(Enum):
 class GaussianImageSmoother(ImageSmoother):
     """Blurs an image via Open CVs cv2.GaussianBlur_
 
-    Notes:
-        For more info about the algorithm see https://docs.opencv.org/4.6.0/d4/d13/tutorial_py_filtering.html
+    Note:
+        For more info about the algorithm see
+        `this <https://docs.opencv.org/4.6.0/d4/d13/tutorial_py_filtering.html>`_.
 
-    .. _cv2.GaussianBlur: * https://docs.opencv.org/4.6.0/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
+    .. _cv2.GaussianBlur: https://docs.opencv.org/4.6.0/d4/d86/group__imgproc__filter.html#gaabe8c836e97159a9193fb0b11ac52cf1
     """
 
     def __init__(self,
                  kernel_size: Optional[int] = None,
                  border_type: CV2BorderTypes = CV2BorderTypes.DEFAULT) -> None:
-        """Initialize ``GaussianImageSmoother`` with given ``kernel_size``
+        """Initialize :class:`GaussianImageSmoother` with given ``kernel_size``
 
         Args:
             kernel_size (int): kernel size for smoothing
@@ -254,7 +258,7 @@ class ImageThresholder(PreprocessorBase):
     """
 
     def __init__(self) -> None:
-        """Initialize ``ImageThresholder``
+        """Initialize :class:`ImageThresholder`
         """
         super().__init__()
 
@@ -283,8 +287,9 @@ class ImageThresholder(PreprocessorBase):
 class CV2ThresholdTypes(Enum):
     """Enum for threshold types in ``cv2.THRESH_*``
 
-    Notes:
-        For more information, see https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gaa9e58d2860d4afa658ef70a9b1115576
+    Note:
+        For more information,
+        see `this <https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gaa9e58d2860d4afa658ef70a9b1115576>`__.
     """
     BINARY = cv2.THRESH_BINARY
     BINARY_INV = cv2.THRESH_BINARY_INV
@@ -297,8 +302,9 @@ class CV2ThresholdTypes(Enum):
 class CV2AdaptiveThresholdTypes(Enum):
     """Enum for adaptive threshold types in ``cv2.ADAPTIVE_THRESH_*``
 
-    Notes:
-        For more information, see https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gaa9e58d2860d4afa658ef70a9b1115576
+    Note:
+        For more information,
+        see `this <https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gaa9e58d2860d4afa658ef70a9b1115576>`__.
     """
     MEAN_C = cv2.ADAPTIVE_THRESH_MEAN_C
     GAUSSIAN_C = cv2.ADAPTIVE_THRESH_GAUSSIAN_C
@@ -307,8 +313,9 @@ class CV2AdaptiveThresholdTypes(Enum):
 class GaussianAdaptiveThresholder(ImageThresholder):
     """Binarizes an image in an Gaussian adaptive manner via cv2.adaptiveThreshold_
 
-    Notes:
-        For more info about the algorithm, see https://docs.opencv.org/4.6.0/d7/d4d/tutorial_py_thresholding.html
+    Note:
+        For more info about the algorithm,
+        see `this <https://docs.opencv.org/4.6.0/d7/d4d/tutorial_py_thresholding.html>`__.
 
     .. _cv2.adaptiveThreshold: https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#ga72b913f352e4a1b1b397736707afcde3
     """
@@ -319,13 +326,14 @@ class GaussianAdaptiveThresholder(ImageThresholder):
                  threshold_type: Optional[CV2ThresholdTypes] = None,
                  block_size: Optional[int] = None,
                  constant: Optional[float] = None) -> None:
-        """Initialize ``GaussianAdaptiveThresholder``
+        """Initialize :class:`GaussianAdaptiveThresholder`
 
         Args:
             max_value (int): maximum value for pixels in the image
             adaptive_method (CV2AdaptiveThresholdTypes): adaptive thresholding algorithm
             threshold_type (CV2ThresholdTypes): threshold type for thresholding.
-                Can be only one of ``CV2ThresholdTypes.BINARY`` and ``CV2ThresholdTypes.BINARY_INV``,
+                Can be only one of ``CV2ThresholdTypes.BINARY``
+                and ``CV2ThresholdTypes.BINARY_INV``
             block_size (int): window size for calculating threshold
             constant (float): constant subtracted from mean and weighted mean
         """
@@ -395,8 +403,9 @@ class GaussianAdaptiveThresholder(ImageThresholder):
 class OtsuThresholder(ImageThresholder):
     """Binarizes an image in an Otsu adaptive manner via cv2.threshold_
 
-    Notes:
-        For more info about the algorithm, see https://docs.opencv.org/4.6.0/d7/d4d/tutorial_py_thresholding.html
+    Note:
+        For more info about the algorithm,
+        see `this <https://docs.opencv.org/4.6.0/d7/d4d/tutorial_py_thresholding.html>`__.
 
     .. _cv2.threshold: https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#gae8a4a146d1ca78c626a53577199e9c57
     """
@@ -406,7 +415,7 @@ class OtsuThresholder(ImageThresholder):
                  max_value: Optional[int] = None,
                  threshold_type: Optional[CV2ThresholdTypes] = None
                  ) -> None:
-        """Initialize ``OtsuThresholder``
+        """Initialize :class:`OtsuThresholder`
 
         Args:
             threshold_value (float): threshold value
@@ -477,7 +486,7 @@ class MorphologicalOperator(PreprocessorBase):
     """
 
     def __init__(self) -> None:
-        """Initialize ``MorphologicalOperator``
+        """Initialize :class:`MorphologicalOperator`
         """
         super().__init__()
 
@@ -506,8 +515,9 @@ class MorphologicalOperator(PreprocessorBase):
 class Dilate(MorphologicalOperator):
     """Dilates an image using cv2.dilate_
 
-    Notes:
-        For more info about the algorithm, see https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#ga8f8b8b8b8f8b8b8b8b8b8b8b8b8b8b8
+    Note:
+        For more info about the algorithm,
+        see `this <https://docs.opencv.org/4.6.0/d7/d1b/group__imgproc__misc.html#ga8f8b8b8b8f8b8b8b8b8b8b8b8b8b8b8>`__.
 
     .. _cv2.dilate: https://docs.opencv.org/4.6.0/d4/d86/group__imgproc__filter.html#ga4ff0f3318642c4f469d0e11f242f3b6c
     """
@@ -516,7 +526,7 @@ class Dilate(MorphologicalOperator):
                  morph_size: Optional[int] = None,
                  iterations: Optional[int] = None
                  ) -> None:
-        """Initialize ``Dilate``
+        """Initialize :class:`Dilate`
 
         Args:
             morph_size (int): morphological struct size. This size used in 

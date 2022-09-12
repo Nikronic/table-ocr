@@ -2,9 +2,20 @@ __all__ = [
     'VERSION_SHORT', 'VERSION'
 ]
 
-_MAJOR = "0"
-_MINOR = "9"
-_REVISION = "0"
+_MAJOR = '0'
+_MINOR = '9'
+_REVISION = '0'
 
-VERSION_SHORT = f"{_MAJOR}.{_MINOR}"
-VERSION = f"{_MAJOR}.{_MINOR}.{_REVISION}"
+VERSION_SHORT = f'{_MAJOR}.{_MINOR}'
+"""Version of the package as ``major.minor``
+
+Suggested usage for stable production where breaking updates
+is not so common.
+"""
+
+VERSION = f'{_MAJOR}.{_MINOR}.{_REVISION}'
+"""Version of the package as ``major.minor.revision.stage.version``
+
+Suggested usage for dev, alpha and beta where breaking updates
+are frequent.
+"""

@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 
 class ImageReader:
-    """Base class for image type readers, e.g. numpy and cv2
+    """Base class for image type readers, e.g. ``numpy`` and ``OpenCV``
 
-    User should subclass this class and implement :meth:`read` method.
+    User should subclass this class and implement ``read()`` method.
     """
 
     def __init__(self) -> None:
