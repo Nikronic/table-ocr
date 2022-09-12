@@ -35,7 +35,7 @@ class DetectorBase:
     def _get_class_attributes(self) -> dict:
         """Attributes of the class that are configs of an operation
 
-        Notes:
+        Note:
             This is used for logging the configs since they need to be manually 
             tuned or experimented with. I.e. for the same input, we might run
             this class (and the operation it implemented) multiple times with
@@ -96,7 +96,7 @@ class CannyEdgeDetector(EdgeDetector):
 
     Notes:
         For more info about the algorithm, see
-        `here <https://docs.opencv.org/4.6.0/da/d22/tutorial_py_canny.html>`_. 
+        `here <https://docs.opencv.org/4.6.0/da/d22/tutorial_py_canny.html>`__. 
 
     .. _cv2.Canny: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga04723e007ed888ddf11d9ba04e2232de
     """
@@ -108,7 +108,7 @@ class CannyEdgeDetector(EdgeDetector):
                  L2_gradient: bool = False) -> None:
         """Initialize Canny edge detector
 
-        Notes:
+        Note:
             For more info about the algorithm, see class docstring.
 
         Args:
@@ -168,7 +168,7 @@ class CannyEdgeDetector(EdgeDetector):
 class LineDirection(Enum):
     """Enum for line direction
 
-    Notes:
+    Note:
         This is used for line detection such as :class:`LineDetector`
         and any class that subclasses it
     """
@@ -223,7 +223,7 @@ class LineDetector(Detector):
             line (:class:`numpy.ndarray`): line to check
 
         Returns:
-            LineDirection: Direction of line
+            :class:`LineDirection`: Direction of line
         """
         return line[1] == line[3]
 
@@ -235,7 +235,7 @@ class LineDetector(Detector):
             line (:class:`numpy.ndarray`): line to check
 
         Returns:
-            LineDirection: Direction of line
+            :class:`LineDirection`: Direction of line
         """
         return line[0] == line[2]
 
@@ -246,7 +246,7 @@ class LineDetector(Detector):
             line (:class:`numpy.ndarray`): line to check
 
         Returns:
-            LineDirection: Direction of line
+            :class:`LineDirection`: Direction of line
         """
         if self._horizontal(line):
             return LineDirection.HORIZONTAL
@@ -271,7 +271,7 @@ class LineDetector(Detector):
 
         Returns:
             List[:class:`numpy.ndarray`]:
-            list of subset of filtered lines. i.e. :math:`text{out} \in text{lines}`
+            list of subset of filtered lines. i.e. :math:`out \in lines`
 
         TODO:
 
@@ -303,7 +303,7 @@ class LineDetector(Detector):
     ) -> Tuple[List[np.ndarray], List[np.ndarray]]:
         """Get lines that form the borders of an image
 
-        Notes:
+        Note:
             This is in case where the detector algorithm does not detect edge
             lines that construct borders of an image. This is a common case when 
             there is not enough border; although we can solve this by adding border, 
@@ -315,7 +315,7 @@ class LineDetector(Detector):
 
         Returns:
             :class:`numpy.ndarray`:
-            A tuple of two lists of lines. The first list contains
+                A tuple of two lists of lines. The first list contains
                 vertical lines and the second list contains horizontal lines.
         """
         left_border = np.array([2, 2, 2, shape[0]], dtype=np.int32)
@@ -374,9 +374,9 @@ class LineDetector(Detector):
 class ProbabilisticHoughLinesDetector(LineDetector):
     """Detect lines in an image using probabilistic Hough transform (cv2.HoughLinesP_)
 
-    Notes:
+    Note:
         For more info about the algorithm, see
-        `here <https://docs.opencv.org/4.6.0/d9/db0/tutorial_hough_lines.html>`_.
+        `here <https://docs.opencv.org/4.6.0/d9/db0/tutorial_hough_lines.html>`__.
 
     .. _cv2.HoughLinesP: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga8618180a5948286384e3b7ca02f6feeb
     """
@@ -389,7 +389,7 @@ class ProbabilisticHoughLinesDetector(LineDetector):
                  max_line_gap: int = 0) -> None:
         """Initialize the detector
 
-        Notes:
+        Note:
             For more info about the algorithm, see class docstring.
 
         Args:
@@ -452,9 +452,9 @@ class ProbabilisticHoughLinesDetector(LineDetector):
 class NaiveHoughLinesDetector(LineDetector):
     """Detect lines in an image using naive Hough transform (cv2.HoughLines_)
 
-    Notes:
+    Note:
         For more info about the algorithm, see
-        `here <https://docs.opencv.org/4.6.0/d9/db0/tutorial_hough_lines.html>`_.
+        `here <https://docs.opencv.org/4.6.0/d9/db0/tutorial_hough_lines.html>`__.
 
     .. _cv2.HoughLines: https://docs.opencv.org/4.6.0/dd/d1a/group__imgproc__feature.html#ga46b4e588934f6c8dfd509cc6e0e4545a
     """
@@ -470,7 +470,7 @@ class NaiveHoughLinesDetector(LineDetector):
         """Initialize the detector
 
 
-        Notes:
+        Note:
             For more info about the algorithm, see class docstring.
 
         Args:
@@ -549,13 +549,13 @@ class ContourLinesDetector(LineDetector):
     This method works best when the image is preprocessed and binary. For preprocessing,
     :mod:`ttocr.data.preprocessors` that has useful functions for this such as:
 
-        * :class:`ttocr.data.preprocessors.Dilate`: for building a solid area of out a text
         * :class:`ttocr.data.preprocessors.OtsuThresholder`: for conversion to binary
         * :class:`ttocr.data.preprocessors.GaussianAdaptiveThresholder`: for conversion to binary
         * :class:`ttocr.data.preprocessors.GaussianImageSmoother`: for blurring the image
 
-    Notes:
-        For more info about the algorithm, see https://docs.opencv.org/4.6.0/d4/d73/tutorial_py_contours_begin.html
+    Note:
+        For more info about the algorithm,
+        see `this <https://docs.opencv.org/4.6.0/d4/d73/tutorial_py_contours_begin.html>`__.
 
     .. _cv2.findContours: https://docs.opencv.org/4.6.0/d3/dc0/group__imgproc__shape.html#gadf1ad6a0b82947fa1fe3c3d497f260e0
     """
@@ -779,7 +779,7 @@ class TesseractOCR(OCR):
                  ) -> None:
         """Initialize the detector
 
-        Notes:
+        Note:
             For more info about Tesseract, see class docstring.
 
         Args:
@@ -828,10 +828,11 @@ class TesseractOCR(OCR):
                     - ``--dpi N``: DPI to use for OCR
                     - ``--oem N``: OCR engine mode
                     - ``--psm N``: Page segmentation mode. Suggested values
-                        are 6 an 3. Defaults to 3.
+                    are 6 an 3. Defaults to 3.
 
                 An example:
-                    ``tesseract --oem 3 --psm 6 -l eng+fas --dpi 100 image.png output hocr pdf txt``           
+
+                    * ``tesseract --oem 3 --psm 6 -l eng+fas --dpi 100 image.png output hocr pdf txt``           
 
         Returns:
             :class:`numpy.ndarray`: image with detected text
@@ -860,10 +861,11 @@ class TesseractOCR(OCR):
                     - ``--dpi N``: DPI to use for OCR
                     - ``--oem N``: OCR engine mode
                     - ``--psm N``: Page segmentation mode. Suggested values
-                        are 6 an 3. Defaults to 3.
+                    are 6 an 3. Defaults to 3.
 
                 An example:
-                    ``tesseract --oem 3 --psm 6 -l eng+fas --dpi 100 image.png output hocr pdf txt``
+
+                    * ``tesseract --oem 3 --psm 6 -l eng+fas --dpi 100 image.png output hocr pdf txt``
 
 
         Returns:
@@ -891,7 +893,7 @@ class TesseractOCR(OCR):
 class TableCellDetector(LineDetector):
     """Detects cells of a table via detected vertical and horizontal lines
 
-    Notes:
+    Note:
         For more info about obtaining lines, see :class:`LineDetector`
         and other classes that subclass it, e.g. :class:`ProbabilisticHoughLinesDetector`.
 

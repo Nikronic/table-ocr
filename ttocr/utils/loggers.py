@@ -14,7 +14,7 @@ import sys
 class LoggingLevels(Enum):
     """Logging levels from ``logging``
 
-    Just a clone of `logging` levels for our internal use, do not expose to user. 
+    Just a clone of ``logging`` **levels** for our internal use, do not expose to user. 
     """
 
     CRITICAL = 50
@@ -86,7 +86,7 @@ class Logger(logging.Logger):
         """Converts a string of path to :class:`pathlib.Path`
 
         Args:
-            string (Union[str, Path]): path string or object to convert
+            string (Union[str, :class:`pathlib.Path`]): path string or object to convert
 
         Returns:
             :class:`pathlib.Path`: ``Path`` instance of given path string 
@@ -100,6 +100,7 @@ class Logger(logging.Logger):
 
         Following type of artifacts are predefined and each will be considered as a
         subdirectory of ``base_path``:
+
             - images: ``images``
             - logging prints: ``logs``
             - configs of classes, setting, etc as json files: ``configs``
@@ -109,7 +110,7 @@ class Logger(logging.Logger):
             you can simply send numerical values (``1/*``, ``2/*``)
 
         Args:
-            base_path (Union[str, Path]): Base path for artifacts. 
+            base_path (Union[str, :class:`pathlib.Path`]): Base path for artifacts. 
         """
         base_path: Path = self.__str_to_path(string=base_path)
         base_path = self.mlflow_artifacts_base_path / base_path
@@ -150,10 +151,10 @@ class Logger(logging.Logger):
 
         Args:
             artifact_name (str): a directory name. Please refrain 
-            from providing full path and only give a directory name. It is expected 
-            that you pass the path as :attr:`mlflow_artifacts_base_path` which makes  
-            ``artifact_name`` as its sub directory. If None, we use an internal
-            counter and use natural numbers increasing each time this method is called.
+                from providing full path and only give a directory name. It is expected 
+                that you pass the path as :attr:`mlflow_artifacts_base_path` which makes  
+                ``artifact_name`` as its sub directory. If None, we use an internal
+                counter and use natural numbers increasing each time this method is called.
         """
         # if prev handler exits, remove it
         self._remove_previous_handlers()
